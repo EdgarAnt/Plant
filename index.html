@@ -1,0 +1,3264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Sprout Tunic - Prototipo Isometrico 3D</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1a66ff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      touch-action: none;
+      overscroll-behavior: none;
+    }
+    #game-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+    .hud {
+      position: fixed;
+      top: max(14px, env(safe-area-inset-top, 14px));
+      left: max(14px, env(safe-area-inset-left, 14px));
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .hud-card {
+      background: rgba(18, 24, 38, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      border-radius: 14px;
+      padding: 12px 16px;
+      color: #f8fafc;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .badge {
+      background: linear-gradient(135deg, #ff7b1c, #ff9f43);
+      color: #fff;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .title-row h1 {
+      font-size: 16px;
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    .bars {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 210px;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+    .bar-track {
+      flex: 1;
+      height: 10px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .bar-fill.hp {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #ef4444, #f97316);
+      transition: width 0.2s ease;
+    }
+    .bar-fill.stamina {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #84cc16);
+      transition: width 0.1s linear;
+    }
+    .controls {
+      position: fixed;
+      bottom: max(18px, env(safe-area-inset-bottom, 18px));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background: rgba(18, 24, 38, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      border-radius: 14px;
+      padding: 10px 15px;
+      color: #f1f5f9;
+      font-size: 12px;
+      line-height: 1.55;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      text-align: center;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .key {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      padding: 1px 7px;
+      font-weight: 700;
+      font-size: 11px;
+      color: #ffd166;
+      margin: 0 2px;
+    }
+    .top-right {
+      position: fixed;
+      top: max(14px, env(safe-area-inset-top, 14px));
+      right: max(14px, env(safe-area-inset-right, 14px));
+      z-index: 15;
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      background: rgba(18, 24, 38, 0.78);
+      color: #fff;
+      border: 1.5px solid rgba(255, 255, 255, 0.22);
+      border-radius: 10px;
+      padding: 8px 13px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease;
+      touch-action: manipulation;
+    }
+    .btn:hover {
+      background: rgba(35, 47, 72, 0.9);
+      transform: translateY(-1px);
+    }
+    .btn:active {
+      transform: scale(0.95);
+    }
+    .btn.studio-active {
+      background: linear-gradient(135deg, #ff7b1c, #ff5400);
+      border-color: #ffd166;
+    }
+    #ref-overlay {
+      position: fixed;
+      top: 70px;
+      left: max(14px, env(safe-area-inset-left, 14px));
+      z-index: 20;
+      display: none;
+      background: rgba(18, 24, 38, 0.85);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      border-radius: 14px;
+      padding: 10px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+    #ref-overlay img {
+      width: 220px;
+      height: auto;
+      border-radius: 10px;
+      display: block;
+      margin-top: 6px;
+    }
+
+    /* --- CONTROLES TACTILES EN PANTALLA (JOYSTICK Y BOTONES PARA CELULAR) --- */
+    .mobile-controls {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 14;
+    }
+    .joystick-zone {
+      position: absolute;
+      left: max(22px, calc(env(safe-area-inset-left, 0px) + 18px));
+      bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+      width: 142px;
+      height: 142px;
+      pointer-events: auto;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .joystick-base {
+      width: 128px;
+      height: 128px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(18, 24, 38, 0.42) 0%, rgba(18, 24, 38, 0.76) 100%);
+      border: 2.5px solid rgba(255, 255, 255, 0.28);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 0 18px rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .joystick-base::after {
+      content: '';
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      border: 1px dashed rgba(255, 255, 255, 0.20);
+      position: absolute;
+      pointer-events: none;
+    }
+    .joystick-dir {
+      position: absolute;
+      font-size: 9px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.35);
+      pointer-events: none;
+      line-height: 1;
+    }
+    .joystick-dir.up { top: 7px; left: 50%; transform: translateX(-50%); }
+    .joystick-dir.down { bottom: 7px; left: 50%; transform: translateX(-50%); }
+    .joystick-dir.left { left: 8px; top: 50%; transform: translateY(-50%); }
+    .joystick-dir.right { right: 8px; top: 50%; transform: translateY(-50%); }
+    .joystick-stick {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 30%, #ffb156 0%, #ff7b1c 62%, #d9530f 100%);
+      border: 2.5px solid rgba(255, 243, 214, 0.85);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45), inset 0 2px 5px rgba(255, 255, 255, 0.45);
+      position: absolute;
+      transform: translate(0px, 0px);
+      transition: transform 0.08s ease-out;
+      pointer-events: none;
+    }
+    .joystick-stick.dragging {
+      transition: none;
+      box-shadow: 0 8px 22px rgba(255, 123, 28, 0.65), inset 0 2px 5px rgba(255, 255, 255, 0.6);
+    }
+
+    /* Pad de botones de accion a la derecha (estilo gamepad movil) */
+    .action-pad {
+      position: absolute;
+      right: max(22px, calc(env(safe-area-inset-right, 0px) + 18px));
+      bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+      width: 176px;
+      height: 168px;
+      pointer-events: none;
+    }
+    .action-btn {
+      position: absolute;
+      pointer-events: auto;
+      touch-action: none;
+      border-radius: 50%;
+      border: 2.5px solid rgba(255, 255, 255, 0.45);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.38), inset 0 2px 4px rgba(255, 255, 255, 0.30);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: transform 0.08s ease, filter 0.08s ease;
+      padding: 0;
+      outline: none;
+    }
+    .action-btn .btn-icon {
+      font-size: 18px;
+      line-height: 1;
+      margin-bottom: 2px;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+    }
+    .action-btn .btn-label {
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      line-height: 1;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+    }
+    .action-btn.pressed,
+    .action-btn:active {
+      transform: scale(0.88);
+      filter: brightness(1.18);
+    }
+    /* Boton Principal: ATACAR / ROMPER (abajo-derecha / centro) */
+    .action-btn.btn-attack {
+      width: 74px;
+      height: 74px;
+      right: 4px;
+      bottom: 6px;
+      background: radial-gradient(circle at 30% 30%, #ff9f43 0%, #ff5e14 70%, #c23600 100%);
+      border-color: #ffe0a3;
+    }
+    .action-btn.btn-attack .btn-icon {
+      font-size: 22px;
+    }
+    .action-btn.btn-attack .btn-label {
+      font-size: 10.5px;
+    }
+    /* Boton BRINCAR (abajo-izquierda del cluster) */
+    .action-btn.btn-jump {
+      width: 62px;
+      height: 62px;
+      left: 6px;
+      bottom: 4px;
+      background: radial-gradient(circle at 30% 30%, #4ade80 0%, #16a34a 75%, #14532d 100%);
+      border-color: #bbf7d0;
+    }
+    /* Boton GIRO ESPECIAL E (arriba-derecha del cluster) */
+    .action-btn.btn-spin {
+      width: 62px;
+      height: 62px;
+      right: 10px;
+      top: 4px;
+      background: radial-gradient(circle at 30% 30%, #38bdf8 0%, #0284c7 75%, #0c4a6e 100%);
+      border-color: #bae6fd;
+    }
+    /* Boton RODAR / DODGE (arriba-izquierda del cluster) */
+    .action-btn.btn-roll {
+      width: 58px;
+      height: 58px;
+      left: 16px;
+      top: 24px;
+      background: radial-gradient(circle at 30% 30%, #a78bfa 0%, #7c3aed 75%, #4c1d95 100%);
+      border-color: #ddd6fe;
+    }
+
+    /* --- DISEÑO RESPONSIVE PARA CELULARES (VERTICAL Y HORIZONTAL) --- */
+    @media (max-width: 1024px), (pointer: coarse) {
+      .controls {
+        display: none;
+      }
+    }
+    @media (max-width: 640px) {
+      .hud {
+        top: max(8px, env(safe-area-inset-top, 8px));
+        left: max(8px, env(safe-area-inset-left, 8px));
+      }
+      .hud-card {
+        padding: 7px 10px;
+        border-radius: 10px;
+      }
+      .title-row {
+        gap: 5px;
+        margin-bottom: 4px;
+      }
+      .badge {
+        font-size: 8.5px;
+        padding: 2px 5px;
+      }
+      .title-row h1 {
+        font-size: 11px;
+      }
+      .bars {
+        width: 125px;
+        gap: 4px;
+      }
+      .bar-row {
+        font-size: 9px;
+        gap: 5px;
+      }
+      .bar-track {
+        height: 7px;
+      }
+      .top-right {
+        top: max(8px, env(safe-area-inset-top, 8px));
+        right: max(8px, env(safe-area-inset-right, 8px));
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 5px;
+      }
+      .btn {
+        padding: 5px 8px;
+        font-size: 9.5px;
+        border-radius: 7px;
+      }
+      .joystick-zone {
+        left: max(10px, calc(env(safe-area-inset-left, 0px) + 10px));
+        bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+        width: 118px;
+        height: 118px;
+      }
+      .joystick-base {
+        width: 108px;
+        height: 108px;
+      }
+      .joystick-base::after {
+        width: 78px;
+        height: 78px;
+      }
+      .joystick-stick {
+        width: 46px;
+        height: 46px;
+      }
+      .action-pad {
+        right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
+        bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+        width: 146px;
+        height: 142px;
+      }
+      .action-btn.btn-attack {
+        width: 62px;
+        height: 62px;
+      }
+      .action-btn.btn-jump,
+      .action-btn.btn-spin {
+        width: 52px;
+        height: 52px;
+      }
+      .action-btn.btn-roll {
+        width: 48px;
+        height: 48px;
+        left: 10px;
+        top: 20px;
+      }
+      #ref-overlay {
+        top: 78px;
+        padding: 6px;
+      }
+      #ref-overlay img {
+        width: 120px;
+      }
+    }
+    /* Celulares en modo horizontal (landscape) con poca altura */
+    @media (max-height: 500px) {
+      .hud-card {
+        padding: 7px 11px;
+      }
+      .title-row h1 {
+        font-size: 12px;
+      }
+      .bars {
+        width: 145px;
+      }
+      .joystick-zone {
+        bottom: 12px;
+        left: max(16px, env(safe-area-inset-left, 16px));
+        width: 118px;
+        height: 118px;
+      }
+      .joystick-base {
+        width: 108px;
+        height: 108px;
+      }
+      .action-pad {
+        bottom: 12px;
+        right: max(16px, env(safe-area-inset-right, 16px));
+        width: 152px;
+        height: 144px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hud" id="hud-panel">
+    <div class="hud-card">
+      <div class="title-row">
+        <span class="badge">Tunic Style</span>
+        <h1>Sprout Island Prototype</h1>
+      </div>
+      <div class="bars">
+        <div class="bar-row">
+          <span>VIDA</span>
+          <div class="bar-track"><div class="bar-fill hp" id="hp-bar"></div></div>
+        </div>
+        <div class="bar-row">
+          <span>ENERGIA</span>
+          <div class="bar-track"><div class="bar-fill stamina" id="st-bar"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ref-overlay">
+    <div>REFERENCIA ORIGINAL</div>
+    <img src="ref_smile.png" alt="Referencia Original" />
+  </div>
+
+  <div class="top-right">
+    <button class="btn" id="btn-studio">Vista Estudio Close-Up (C)</button>
+    <button class="btn" id="btn-respawn">Regenerar Mapa (R)</button>
+  </div>
+
+  <div class="controls">
+    <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> o <span class="key">Flechas</span> Caminar / Correr &nbsp;|&nbsp; <span class="key">C</span> Vista Estudio Close-Up</div>
+    <div><span class="key">Espacio</span> Brincar &nbsp;|&nbsp; <span class="key">Shift</span> / <span class="key">K</span> Rodar (Dodge Roll)</div>
+    <div><span class="key">Click Izq</span> o <span class="key">J</span> Ataque / Romper &nbsp;|&nbsp; <span class="key">E</span> Giro de Hojas (Especial)</div>
+    <div><span class="key">R</span> Regenerar Arbustos y Cuadraditos &nbsp;|&nbsp; <span class="key">Rueda Mouse</span> Zoom</div>
+  </div>
+
+  <!-- CONTROLES TACTILES EN PANTALLA (JOYSTICK Y BOTONES DE ACCION PARA CELULAR Y PANTALLA) -->
+  <div class="mobile-controls" id="mobile-controls">
+    <div class="joystick-zone" id="joystick-zone" aria-label="Joystick de movimiento">
+      <div class="joystick-base" id="joystick-base">
+        <span class="joystick-dir up">▲</span>
+        <span class="joystick-dir down">▼</span>
+        <span class="joystick-dir left">◀</span>
+        <span class="joystick-dir right">▶</span>
+        <div class="joystick-stick" id="joystick-stick"></div>
+      </div>
+    </div>
+
+    <div class="action-pad" id="action-pad">
+      <button class="action-btn btn-roll" id="btn-touch-roll" type="button" aria-label="Rodar">
+        <span class="btn-icon">💨</span>
+        <span class="btn-label">Rodar</span>
+      </button>
+      <button class="action-btn btn-spin" id="btn-touch-spin" type="button" aria-label="Giro Especial E">
+        <span class="btn-icon">🌪️</span>
+        <span class="btn-label">Giro E</span>
+      </button>
+      <button class="action-btn btn-jump" id="btn-touch-jump" type="button" aria-label="Brincar">
+        <span class="btn-icon">⬆️</span>
+        <span class="btn-label">Brincar</span>
+      </button>
+      <button class="action-btn btn-attack" id="btn-touch-attack" type="button" aria-label="Atacar y Romper">
+        <span class="btn-icon">⚔️</span>
+        <span class="btn-label">Atacar</span>
+      </button>
+    </div>
+  </div>
+
+  <canvas id="game-canvas"></canvas>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    
+
+/**
+ * ITERACION 10 - Calibracion final y exacta a ref_smile.png:
+ * 1. Ojos con coordenadas planares directas (nx, ny) -> UV:
+ *    - Cero distorsion de SphereGeometry, pupila gigante negro-azabache ubicada en el lugar exacto,
+ *      con media luna blanca crema a la izquierda y reflejo vertical suave sobre la pupila!
+ *    - El globo ocular termina limpiamente detras de la bolsita inferior (sin desbordarse jamas por debajo).
+ * 2. Hojita lateral derecha con su silueta en "S" acostada: base redondeada que nace junto al tallo,
+ *    valle suave y punta derecha gruesa curvada hacia arriba.
+ * 3. Tallo central con doble costilla vertical de planta y brotes laterales redondeados.
+ * 4. Botas con luz difusa suave y puntera iluminada, sin reflejo lineal vertical en el tobillo.
+ */
+/**
+ * ITERACION 10 - Calibracion final y exacta a ref_smile.png:
+ * 1. Ojos con coordenadas planares directas (nx, ny) -> UV:
+ *    - Cero distorsion de SphereGeometry, pupila gigante negro-azabache ubicada en el lugar exacto,
+ *      con media luna blanca crema a la izquierda y reflejo vertical suave sobre la pupila!
+ *    - El globo ocular termina limpiamente detras de la bolsita inferior (sin desbordarse jamas por debajo).
+ * 2. Hojita lateral derecha con su silueta en "S" acostada: base redondeada que nace junto al tallo,
+ *    valle suave y punta derecha gruesa curvada hacia arriba.
+ * 3. Tallo central con doble costilla vertical de planta y brotes laterales redondeados.
+ * 4. Botas con luz difusa suave y puntera iluminada, sin reflejo lineal vertical en el tobillo.
+ */
+function createExactPotGeometry() {
+  const profileCurve = new THREE.CurvePath();
+
+  // Perfil (r, y) de la maceta naranja con borde superior redondeado y boca hundida con tierra real:
+  // Base en y = -0.695, hombro redondeado que sube hasta el labio en y = +0.715 (r = 0.56),
+  // y luego baja hacia adentro de la maceta formando el borde interior y la cama de tierra en y = +0.625!
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.0, -0.695),
+    new THREE.Vector2(0.45, -0.695),
+    new THREE.Vector2(0.745, -0.45),
+    new THREE.Vector2(0.770, -0.05)
+  ));
+
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.770, -0.05),
+    new THREE.Vector2(0.778, 0.15),
+    new THREE.Vector2(0.782, 0.35),
+    new THREE.Vector2(0.776, 0.51)
+  ));
+
+  // Hombro exterior y labio superior de la maceta (sube hasta y = 0.715 en r = 0.575)
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.776, 0.51),
+    new THREE.Vector2(0.768, 0.645),
+    new THREE.Vector2(0.685, 0.715),
+    new THREE.Vector2(0.575, 0.715)
+  ));
+
+  // Borde interior de la maceta (baja desde el labio r=0.575, y=0.715 hacia la cavidad interior r=0.485, y=0.620)
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.575, 0.715),
+    new THREE.Vector2(0.520, 0.715),
+    new THREE.Vector2(0.495, 0.665),
+    new THREE.Vector2(0.480, 0.618)
+  ));
+
+  // Fondo interior bajo la tierra (cierra en r=0, y=0.618)
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.480, 0.618),
+    new THREE.Vector2(0.320, 0.618),
+    new THREE.Vector2(0.160, 0.618),
+    new THREE.Vector2(0.0, 0.618)
+  ));
+
+  const rings = 170;
+  const segs = 200;
+  const profilePts = profileCurve.getSpacedPoints(rings);
+
+  const geo = new THREE.BufferGeometry();
+  const positions = [];
+  const colors = [];
+  const uvs = [];
+  const indices = [];
+
+  // Gradiente naranja mandarina calido y luminoso
+  const topOrange = new THREE.Color(0xf87112);
+  const midOrange = new THREE.Color(0xf46307);
+  const botOrange = new THREE.Color(0xe85605);
+  const bevelWarmOrange = new THREE.Color(0xc64102);
+  const cheekBlushOrange = new THREE.Color(0xdc4c04);
+  const cheekHighlightOrange = new THREE.Color(0xfb7d1b);
+  const cTmp = new THREE.Color();
+
+  // Posiciones exactas de las cuencas oculares (mas altas y anchas como en ref_smile.png)
+  const eyeSockets = [
+    { x: -0.172, y: 0.205, rx: 0.228, ry: 0.312 },
+    { x:  0.278, y: 0.195, rx: 0.194, ry: 0.305 }
+  ];
+
+  for (let i = 0; i <= rings; i++) {
+    const pt = profilePts[i];
+    const rBase = pt.x;
+    const yBase = pt.y;
+    const vCoord = i / rings;
+
+    for (let j = 0; j <= segs; j++) {
+      const uCoord = j / segs;
+      const theta = uCoord * Math.PI * 2;
+
+      const cos4 = Math.cos(4 * theta);
+      const squircle = 1.0 - 0.046 * cos4;
+
+      let x = Math.cos(theta) * rBase * squircle * 1.00;
+      let y = yBase;
+      let z = Math.sin(theta) * rBase * squircle * 0.96;
+
+      const hNorm = THREE.MathUtils.clamp((y + 0.695) / 1.44, 0, 1);
+      if (hNorm > 0.38) {
+        cTmp.lerpColors(midOrange, topOrange, (hNorm - 0.38) / 0.62);
+      } else {
+        cTmp.lerpColors(botOrange, midOrange, Math.pow(hNorm / 0.38, 0.68));
+      }
+
+      // Sombreado realista dentro del labio interior de la maceta (donde toca la tierra)
+      if (i > rings * 0.72 && rBase < 0.575) {
+        const innerDepth = THREE.MathUtils.clamp((0.575 - rBase) / 0.095, 0, 1);
+        cTmp.lerp(bevelWarmOrange, innerDepth * 0.75);
+      }
+
+      if (z > 0.22) {
+        for (let e = 0; e < 2; e++) {
+          const es = eyeSockets[e];
+          const dx = (x - es.x) / es.rx;
+          const dy = (y - es.y) / es.ry;
+
+          // Forma del contorno del ojo: arco alto arriba y corte recto/curvo abajo en dy = -0.78
+          const yShape = dy < 0 ? dy * 1.28 : dy * 0.96;
+          const d = Math.hypot(dx, yShape);
+
+          // 1. Hundimiento de la cuenca: solo por encima de la bolsita inferior (dy > -0.82)
+          // para que la bolsita nunca se hunda ni deje salir el ojo por debajo!
+          if (d < 0.98 && dy > -0.84) {
+            const bottomFade = THREE.MathUtils.smoothstep(dy, -0.84, -0.62);
+            const depthFactor = (1.0 - THREE.MathUtils.smoothstep(d, 0.78, 0.96)) * bottomFade;
+            z -= depthFactor * 0.068;
+
+            // Bisel naranja calido en el borde superior e izquierdo del ojo
+            if (dy > -0.45) {
+              const rimRing = Math.exp(-Math.pow((d - 0.91) / 0.060, 2));
+              const rimDirBias = THREE.MathUtils.clamp(0.68 - 0.45 * dx + 0.42 * dy, 0.05, 1.0);
+              cTmp.lerp(bevelWarmOrange, rimRing * rimDirBias * 0.68);
+            }
+          }
+
+          // 2. Parpado inferior / bolsita integrada suave y adelantada que cubre limpiamente la base del ojo
+          const lidDx = dx / 0.84;
+          const lidDy = (dy + 0.80) / 0.16;
+          const lidDist = Math.hypot(lidDx, lidDy);
+          if (lidDist < 1.0) {
+            const w = Math.cos(lidDist * Math.PI * 0.5);
+            z += Math.pow(w, 1.35) * 0.044;
+            if (lidDy > -0.25) {
+              cTmp.lerp(cheekHighlightOrange, Math.pow(w, 1.4) * 0.34);
+            } else {
+              cTmp.lerp(cheekBlushOrange, Math.pow(w, 1.4) * 0.14);
+            }
+          }
+
+          // 3. Sombra calida muy sutil justo bajo la bolsita (dy ~ -0.96)
+          const creaseDx = dx / 0.52;
+          const creaseDy = (dy + 0.96) / 0.07;
+          const creaseDist = Math.hypot(creaseDx, creaseDy);
+          if (creaseDist < 1.0) {
+            const cw = Math.pow(Math.cos(creaseDist * Math.PI * 0.5), 1.6);
+            cTmp.lerp(cheekBlushOrange, cw * 0.16);
+          }
+        }
+      }
+
+      positions.push(x, y, z);
+      colors.push(cTmp.r, cTmp.g, cTmp.b);
+      uvs.push(uCoord, vCoord);
+    }
+  }
+
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < segs; j++) {
+      const a = i * (segs + 1) + j;
+      const b = (i + 1) * (segs + 1) + j;
+      const c = (i + 1) * (segs + 1) + (j + 1);
+      const d = i * (segs + 1) + (j + 1);
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Crea el monticulo 3D de tierra organica (sustrato rico de maceta con relieve de terrones y piedritas)
+ * que llena la abertura superior de la maceta y del cual brota el tallo central.
+ */
+function createPottingSoilGroup() {
+  const soilGroup = new THREE.Group();
+
+  // Textura procedural de tierra oscura con granos organicos, humus y perlita/piedritas
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Gradiente radial (mas humedo y oscuro en el centro junto al tallo y en el borde de oclusion con la maceta)
+  const bgGrad = ctx.createRadialGradient(256, 256, 18, 256, 256, 256);
+  bgGrad.addColorStop(0.0, '#27150b');
+  bgGrad.addColorStop(0.25, '#3b2213');
+  bgGrad.addColorStop(0.72, '#4a2c18');
+  bgGrad.addColorStop(0.92, '#351d0f');
+  bgGrad.addColorStop(1.0, '#221208');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Semilla determinista para granos de tierra
+  let seed = 1337;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+
+  // Terrones oscuros y medios
+  for (let i = 0; i < 900; i++) {
+    const x = rand() * 512;
+    const y = rand() * 512;
+    const r = 2 + rand() * 8;
+    const shade = rand();
+    if (shade < 0.45) {
+      ctx.fillStyle = 'rgba(30, 16, 8, 0.55)';
+    } else if (shade < 0.88) {
+      ctx.fillStyle = 'rgba(92, 56, 32, 0.42)';
+    } else {
+      ctx.fillStyle = 'rgba(130, 84, 48, 0.38)';
+    }
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const soilTex = new THREE.CanvasTexture(canvas);
+  soilTex.colorSpace = THREE.SRGBColorSpace;
+
+  const soilMat = new THREE.MeshStandardMaterial({
+    map: soilTex,
+    roughness: 0.92,
+    metalness: 0.02,
+    bumpMap: soilTex,
+    bumpScale: 0.025
+  });
+
+  // Geometria del domo de tierra con forma squircle que encaja exacto dentro del labio de la maceta (r = 0.525)
+  const rings = 36;
+  const segs = 72;
+  const geo = new THREE.BufferGeometry();
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+
+  for (let i = 0; i <= rings; i++) {
+    const t = i / rings; // 0 = centro (junto al tallo), 1 = borde interior de la maceta
+    const r = t * 0.518;
+
+    for (let j = 0; j <= segs; j++) {
+      const u = j / segs;
+      const theta = u * Math.PI * 2;
+      const cos4 = Math.cos(4 * theta);
+      const squircle = 1.0 - 0.046 * cos4;
+
+      const x = Math.cos(theta) * r * squircle * 1.00;
+      const z = Math.sin(theta) * r * squircle * 0.96;
+
+      // Relieve organico de terrones de tierra + monticulo central donde nace el tallo
+      const lump1 = Math.sin(x * 18.0 + z * 14.0) * Math.cos(z * 16.0 - x * 12.0) * 0.012 * (1 - t * 0.4);
+      const lump2 = Math.cos(theta * 7.0 + t * 9.0) * 0.008 * Math.sin(t * Math.PI);
+      const centerMound = Math.exp(-t * t * 14.0) * 0.038;
+      const dome = Math.cos(t * Math.PI * 0.5) * 0.055;
+
+      const y = 0.642 + dome + centerMound + lump1 + lump2;
+
+      positions.push(x, y, z);
+      uvs.push(0.5 + (x / 1.05), 0.5 + (z / 1.05));
+    }
+  }
+
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < segs; j++) {
+      const a = i * (segs + 1) + j;
+      const b = (i + 1) * (segs + 1) + j;
+      const c = (i + 1) * (segs + 1) + (j + 1);
+      const d = i * (segs + 1) + (j + 1);
+      indices.push(a, d, b);
+      indices.push(b, d, c);
+    }
+  }
+
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+
+  const soilMesh = new THREE.Mesh(geo, soilMat);
+  soilMesh.receiveShadow = true;
+  soilMesh.castShadow = false;
+  soilGroup.add(soilMesh);
+
+  // Terrones 3D individuales y piedritas organicas repartidos sobre la tierra alrededor del tallo
+  const clodDarkMat = new THREE.MeshStandardMaterial({ color: 0x361e10, roughness: 0.95, flatShading: true });
+  const clodMidMat = new THREE.MeshStandardMaterial({ color: 0x4e2e1a, roughness: 0.92, flatShading: true });
+  const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x9c826b, roughness: 0.80, flatShading: true });
+
+  const clodCoords = [
+    [0.08, 0.692, 0.05, 0.048, clodDarkMat],
+    [-0.09, 0.690, 0.06, 0.052, clodMidMat],
+    [0.02, 0.694, -0.09, 0.046, clodDarkMat],
+    [-0.18, 0.682, -0.14, 0.055, clodMidMat],
+    [0.22, 0.678, -0.16, 0.050, clodDarkMat],
+    [-0.25, 0.675, 0.15, 0.048, clodDarkMat],
+    [0.16, 0.684, 0.22, 0.045, clodMidMat],
+    [-0.05, 0.685, 0.26, 0.042, clodDarkMat],
+    [-0.31, 0.668, -0.02, 0.046, clodMidMat],
+    [0.30, 0.666, 0.04, 0.044, clodDarkMat],
+    [-0.14, 0.686, 0.16, 0.026, pebbleMat],
+    [0.14, 0.685, -0.07, 0.024, pebbleMat],
+    [-0.22, 0.676, -0.22, 0.028, pebbleMat]
+  ];
+
+  clodCoords.forEach(([cx, cy, cz, radius, mat], idx) => {
+    const clodGeo = new THREE.DodecahedronGeometry(radius, 1);
+    const clod = new THREE.Mesh(clodGeo, mat);
+    clod.position.set(cx, cy, cz);
+    clod.scale.set(1.25, 0.58, 1.15);
+    clod.rotation.set(idx * 0.7, idx * 1.3, idx * 0.4);
+    clod.castShadow = true;
+    clod.receiveShadow = true;
+    soilGroup.add(clod);
+  });
+
+  return soilGroup;
+}
+
+/**
+ * Crea una textura planar 1024x1024 para el ojo donde:
+ * - u = 0 es el borde izquierdo del ojo (media luna blanca crema)
+ * - u = 1 es el borde derecho del ojo (pupila negra pegada a la derecha)
+ * - v = 1 es el borde superior del ojo
+ * - v = 0 es el borde inferior del ojo
+ */
+function createPlanarEyeTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Esclerotica blanco-crema con sombreado suave en el borde izquierdo/superior (oclusion del bisel naranja)
+  const scleraGrad = ctx.createLinearGradient(80, 120, 760, 820);
+  scleraGrad.addColorStop(0.0, '#cdb9a6');
+  scleraGrad.addColorStop(0.18, '#efe6da');
+  scleraGrad.addColorStop(0.50, '#faf6f0');
+  scleraGrad.addColorStop(1.0, '#eee3d6');
+  ctx.fillStyle = scleraGrad;
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // 2. Pupila negra gigante desplazada a la derecha:
+  // En la referencia, la media luna blanca ocupa ~30% izquierdo (x = 0..310px de 1024)
+  // y la pupila negra ocupa desde x = 310 hasta x = 1024, y desde muy arriba (y = 35) hasta toda la base inferior!
+  ctx.save();
+  const pupilCx = 685;
+  const pupilCy = 520;
+  const pupilRx = 378;
+  const pupilRy = 495;
+
+  const pupilGrad = ctx.createRadialGradient(-25, 45, 20, 0, 0, pupilRy);
+  pupilGrad.addColorStop(0.0, '#180d07');
+  pupilGrad.addColorStop(0.68, '#080504');
+  pupilGrad.addColorStop(0.96, '#040304');
+  pupilGrad.addColorStop(1.0, '#cdb9a6');
+
+  ctx.translate(pupilCx, pupilCy);
+  ctx.scale(pupilRx / pupilRy, 1.0);
+  ctx.beginPath();
+  ctx.arc(0, 0, pupilRy, 0, Math.PI * 2);
+  ctx.fillStyle = pupilGrad;
+  ctx.fill();
+  ctx.restore();
+
+  // 3. Reflejo blanco vertical-curvo suave en el lado DERECHO de la pupila (x = 815, y = 475) como en ref_smile.png!
+  ctx.save();
+  ctx.translate(815, 475);
+  ctx.rotate(0.08);
+  ctx.scale(0.15, 1.18);
+  const hlGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 215);
+  hlGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.86)');
+  hlGrad.addColorStop(0.28, 'rgba(255, 255, 255, 0.45)');
+  hlGrad.addColorStop(0.62, 'rgba(255, 255, 255, 0.12)');
+  hlGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+  ctx.fillStyle = hlGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, 215, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 4. Segundo reflejo vertical muy tenue en el lado izquierdo de la pupila (x = 415, y = 490)
+  ctx.save();
+  ctx.translate(415, 490);
+  ctx.scale(0.14, 1.10);
+  const hlGrad2 = ctx.createRadialGradient(0, 0, 4, 0, 0, 165);
+  hlGrad2.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
+  hlGrad2.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+  ctx.fillStyle = hlGrad2;
+  ctx.beginPath();
+  ctx.arc(0, 0, 165, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/**
+ * Crea una hoja/brote 3D con punta superior verdaderamente redondeada (tipo cuchara/oliva carnosa, cero picos!)
+ */
+function createPlumpPodLeafGeometry(width = 0.168, length = 0.62, thickness = 0.086, curveZ = 0.02, grooveDepth = 0.0) {
+  const geo = new THREE.SphereGeometry(1, 56, 40);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const t = (v.y + 1) * 0.5;
+    const baseTaper = 0.35 + 0.65 * Math.pow(t, 0.35);
+    const upperBelly = 1.0 + 0.18 * Math.sin(t * Math.PI);
+
+    const x = v.x * width * baseTaper * upperBelly;
+    const y = t * length;
+
+    const centerLine = Math.exp(-Math.pow(v.x / 0.22, 2)) * Math.sin(t * Math.PI);
+    const zMod = grooveDepth !== 0 ? -grooveDepth * centerLine : 0.008 * centerLine;
+    const z = v.z * thickness * baseTaper + Math.sin(t * Math.PI) * curveZ + (v.z > 0 ? zMod : 0);
+
+    pos.setXYZ(i, x, y, z);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Textura de hoja con colores verdes luminosos y nervadura central clara
+ */
+function createLeafTexture(veinStrength = 1.0, isSideLeaf = false) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  const grad = ctx.createLinearGradient(0, 512, 0, 0);
+  grad.addColorStop(0, '#339211');
+  grad.addColorStop(0.50, '#48b41a');
+  grad.addColorStop(1, '#60cf24');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  if (veinStrength > 0) {
+    const cx = Math.floor(512 * (isSideLeaf ? 0.72 : 0.75));
+    const veinGrad = ctx.createLinearGradient(cx - 14, 0, cx + 14, 0);
+    veinGrad.addColorStop(0, 'rgba(217, 249, 157, 0)');
+    veinGrad.addColorStop(0.35, `rgba(225, 252, 175, ${0.65 * veinStrength})`);
+    veinGrad.addColorStop(0.5, `rgba(250, 255, 240, ${0.95 * veinStrength})`);
+    veinGrad.addColorStop(0.65, `rgba(225, 252, 175, ${0.65 * veinStrength})`);
+    veinGrad.addColorStop(1, 'rgba(217, 249, 157, 0)');
+    ctx.fillStyle = veinGrad;
+    ctx.beginPath();
+    ctx.roundRect(cx - 10, 65, 20, 375, 10);
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Construye la hojita acostada sobre la parte superior derecha de la cabeza con la silueta en "S" exacta de ref_smile.png:
+ * - Lomo izquierdo redondeado que sube suavemente desde el tallo, baja ligeramente en un valle suave (t~0.42)
+ *   y vuelve a subir en una punta derecha redondeada y levantada!
+ */
+function createSideLeafGeometry() {
+  const geo = new THREE.SphereGeometry(1, 64, 48);
+  const pos = geo.attributes.position;
+
+  for (let i = 0; i < pos.count; i++) {
+    const vx = pos.getX(i);
+    const vy = pos.getY(i);
+    const vz = pos.getZ(i);
+
+    const t = (vy + 1) * 0.5; // 0 = base izquierda redonda, 1 = punta derecha redonda
+
+    // Silueta en S: abombada en t~0.18, ligero valle suave en t~0.46 y lomo amplio en t~0.80
+    const leftPillow = Math.exp(-Math.pow((t - 0.18) / 0.18, 2)) * 0.24;
+    const midDip = -Math.exp(-Math.pow((t - 0.45) / 0.16, 2)) * 0.14;
+    const rightSwell = Math.exp(-Math.pow((t - 0.78) / 0.22, 2)) * 0.22;
+    const radiusScale = 1.0 + leftPillow + midDip + rightSwell;
+
+    const cx = t * 0.50;
+    const cy =
+      Math.sin(t * Math.PI * 1.1) * 0.022 -
+      Math.exp(-Math.pow((t - 0.42) / 0.18, 2)) * 0.018 +
+      Math.pow(Math.max(0, (t - 0.28) / 0.72), 2.15) * 0.215;
+    const cz = Math.sin(t * Math.PI) * 0.024;
+
+    const dcy = 0.215 * 2.15 * Math.pow(Math.max(0, (t - 0.28) / 0.72), 1.15) / 0.72;
+    const angle = Math.atan2(dcy, 0.50) * 0.65;
+
+    const sideGroove = Math.exp(-Math.pow((vx + 0.08) / 0.28, 2)) * (vz > 0 ? -0.014 : 0) * Math.sin(t * Math.PI);
+
+    const localThick = -vx * 0.092 * radiusScale;
+    const localDepth = vz * 0.125 * radiusScale + sideGroove;
+
+    const finalX = cx - Math.sin(angle) * localThick;
+    const finalY = cy + Math.cos(angle) * localThick;
+    const finalZ = cz + localDepth;
+
+    pos.setXYZ(i, finalX, finalY, finalZ);
+  }
+
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Textura del brazo verde con las 2 rayas finas blanco-verdosas en la muneca y el pequeno ovalo '0'
+ */
+function createArmTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#338c19';
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.fillStyle = 'rgba(210, 238, 192, 0.85)';
+  ctx.fillRect(Math.floor(512 * 0.725), 0, 5, 512);
+  ctx.fillRect(Math.floor(512 * 0.755), 0, 5, 512);
+
+  ctx.strokeStyle = 'rgba(210, 238, 192, 0.88)';
+  ctx.lineWidth = 4.5;
+  for (let vFrac of [0.15, 0.38, 0.64, 0.88]) {
+    ctx.beginPath();
+    ctx.ellipse(Math.floor(512 * 0.825), Math.floor(512 * vFrac), 8, 14, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Textura de la bota verde con el brillo redondo suave en la puntera y las 2 lineas de costura laterales del empeine
+ */
+function createBootTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#368f1b';
+  ctx.fillRect(0, 0, 512, 512);
+
+  const frontX = Math.floor(512 * 0.25);
+
+  const toeGlow = ctx.createRadialGradient(frontX + 8, 384, 4, frontX + 8, 384, 46);
+  toeGlow.addColorStop(0, 'rgba(230, 252, 215, 0.52)');
+  toeGlow.addColorStop(0.5, 'rgba(170, 230, 145, 0.22)');
+  toeGlow.addColorStop(1, 'rgba(54, 143, 27, 0)');
+  ctx.fillStyle = toeGlow;
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = 'rgba(25, 76, 10, 0.48)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(frontX - 23, 55);
+  ctx.lineTo(frontX - 25, 270);
+  ctx.moveTo(frontX + 23, 55);
+  ctx.lineTo(frontX + 25, 270);
+  ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Construye el cuerpo de la bota/tenis verde como un solido cerrado convexo y suave
+ */
+function createSolidSneakerGeometry() {
+  const rings = 40;
+  const radial = 48;
+  const geo = new THREE.BufferGeometry();
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+
+  for (let i = 0; i <= rings; i++) {
+    const t = i / rings;
+    const y = THREE.MathUtils.lerp(-0.250, 0.045, t);
+
+    const vampCurve = Math.sin(Math.pow(1 - t, 1.45) * Math.PI * 0.5);
+    const bottomRound = t < 0.16 ? Math.pow(t / 0.16, 0.35) * 0.10 + 0.90 : 1.0;
+
+    const xRad = (0.158 + vampCurve * 0.015) * bottomRound;
+    const zBackRad = (0.158 + vampCurve * 0.008) * bottomRound;
+    const zFrontRad = (0.158 + vampCurve * 0.152) * bottomRound;
+
+    for (let j = 0; j <= radial; j++) {
+      const u = j / radial;
+      const a = u * Math.PI * 2;
+      const cosA = Math.cos(a);
+      const sinA = Math.sin(a);
+
+      const x = cosA * xRad;
+      const z = sinA >= 0 ? sinA * zFrontRad : sinA * zBackRad;
+
+      positions.push(x, y, z);
+      uvs.push(u, t);
+    }
+  }
+
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < radial; j++) {
+      const a = i * (radial + 1) + j;
+      const b = (i + 1) * (radial + 1) + j;
+      const c = (i + 1) * (radial + 1) + (j + 1);
+      const d = i * (radial + 1) + (j + 1);
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Construye la suela verde claro cerrada y redondeada
+ */
+function createSolidSoleGeometry() {
+  const rings = 14;
+  const radial = 48;
+  const geo = new THREE.BufferGeometry();
+  const positions = [];
+  const indices = [];
+
+  for (let i = 0; i <= rings; i++) {
+    const t = i / rings;
+    const y = THREE.MathUtils.lerp(-0.288, -0.246, t);
+    const pill = Math.sin(t * Math.PI) * 0.010;
+    const capScale = t === 0 ? 0.92 : 1.0;
+
+    for (let j = 0; j <= radial; j++) {
+      const a = (j / radial) * Math.PI * 2;
+      const cosA = Math.cos(a);
+      const sinA = Math.sin(a);
+
+      const x = cosA * (0.170 + pill) * capScale;
+      const z = (sinA >= 0 ? sinA * (0.310 + pill) : sinA * (0.166 + pill)) * capScale;
+
+      positions.push(x, y, z);
+    }
+  }
+
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < radial; j++) {
+      const a = i * (radial + 1) + j;
+      const b = (i + 1) * (radial + 1) + j;
+      const c = (i + 1) * (radial + 1) + (j + 1);
+      const d = i * (radial + 1) + (j + 1);
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function createExactPlantCharacter(options = {}) {
+  const showWeapons = options.showWeapons ?? false;
+  const showTeeth = options.showTeeth ?? false;
+
+  const root = new THREE.Group();
+  const bodyPivot = new THREE.Group();
+  root.add(bodyPivot);
+
+  // --- MATERIALES PBR CALIBRADOS ---
+  const orangeBodyMat = new THREE.MeshPhysicalMaterial({
+    vertexColors: true,
+    roughness: 0.34,
+    metalness: 0.0,
+    clearcoat: 0.10,
+    clearcoatRoughness: 0.42,
+    sheen: 0.12,
+    sheenColor: new THREE.Color(0xff9e44),
+    sheenRoughness: 0.55
+  });
+
+  const unifiedEyeMat = new THREE.MeshPhysicalMaterial({
+    map: createPlanarEyeTexture(),
+    roughness: 0.15,
+    clearcoat: 0.65,
+    clearcoatRoughness: 0.12
+  });
+
+  const stemGreenMat = new THREE.MeshPhysicalMaterial({
+    color: 0x45ae18,
+    roughness: 0.28,
+    clearcoat: 0.18,
+    clearcoatRoughness: 0.32,
+    sheen: 0.25,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const sideLeafMat = new THREE.MeshPhysicalMaterial({
+    map: createLeafTexture(0.80, true),
+    roughness: 0.28,
+    clearcoat: 0.18,
+    sheen: 0.25,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const topLeafMat = new THREE.MeshPhysicalMaterial({
+    map: createLeafTexture(1.0, false),
+    roughness: 0.28,
+    clearcoat: 0.18,
+    sheen: 0.25,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const budLeafMat = new THREE.MeshPhysicalMaterial({
+    map: createLeafTexture(0.60, false),
+    roughness: 0.28,
+    clearcoat: 0.18,
+    sheen: 0.25,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const limbGreenMat = new THREE.MeshPhysicalMaterial({
+    color: 0x338c19,
+    roughness: 0.38,
+    clearcoat: 0.10,
+    clearcoatRoughness: 0.42,
+    sheen: 0.18,
+    sheenColor: new THREE.Color(0x86efac)
+  });
+
+  const armMatWithStripes = new THREE.MeshPhysicalMaterial({
+    map: createArmTexture(),
+    roughness: 0.38,
+    clearcoat: 0.10,
+    clearcoatRoughness: 0.42,
+    sheen: 0.18,
+    sheenColor: new THREE.Color(0x86efac)
+  });
+
+  const bootGreenMat = new THREE.MeshPhysicalMaterial({
+    map: createBootTexture(),
+    roughness: 0.56,
+    clearcoat: 0.0,
+    sheen: 0.18,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const soleGreenMat = new THREE.MeshPhysicalMaterial({
+    color: 0x4ba82e,
+    roughness: 0.44,
+    clearcoat: 0.05
+  });
+
+  const whiteTrimMat = new THREE.MeshStandardMaterial({
+    color: 0xd8ebd0,
+    roughness: 0.35
+  });
+
+  const mouthDarkMat = new THREE.MeshStandardMaterial({
+    color: 0x380e04,
+    roughness: 0.40
+  });
+
+  // =========================================================
+  // 1. MACETA / CABEZA NARANJA CALIBRADA + TIERRA ORGANICA EN LA PARTE SUPERIOR
+  // =========================================================
+  const headGeo = createExactPotGeometry();
+  const headMesh = new THREE.Mesh(headGeo, orangeBodyMat);
+  headMesh.position.y = 1.90;
+  headMesh.castShadow = true;
+  headMesh.receiveShadow = true;
+  bodyPivot.add(headMesh);
+
+  // Tierra 3D dentro de la abertura superior de la maceta (visible desde camara isometrica)
+  const soilGroup = createPottingSoilGroup();
+  headMesh.add(soilGroup);
+
+  // =========================================================
+  // 2. OJOS UNIFICADOS CON UV PLANAR Y RECORTE INFERIOR DETRAS DE LA BOLSITA
+  // =========================================================
+  function createRecessedEye(side) {
+    const eyeGroup = new THREE.Group();
+    const ex = side === -1 ? -0.172 : 0.278;
+    const ey = side === -1 ? 0.205 : 0.195;
+    const ez = side === -1 ? 0.658 : 0.624;
+    eyeGroup.position.set(ex, ey, ez);
+    eyeGroup.rotation.y = side === -1 ? -0.07 : 0.28;
+
+    const rxScale = side === -1 ? 0.85 : 0.72;
+    const ryScale = side === -1 ? 1.16 : 1.14;
+
+    const eyeGeo = new THREE.SphereGeometry(0.282, 64, 64);
+    const ePos = eyeGeo.attributes.position;
+    const eUv = eyeGeo.attributes.uv;
+
+    for (let i = 0; i < ePos.count; i++) {
+      const origX = ePos.getX(i);
+      const origY = ePos.getY(i);
+      const origZ = ePos.getZ(i);
+
+      // Coordenadas normalizadas (-1 a +1) antes de escalar
+      const nx = origX / 0.282;
+      const ny = origY / 0.282;
+
+      // Mapeo UV planar directo sobre la cara frontal del globo ocular!
+      eUv.setXY(i, (nx + 1) * 0.5, (ny + 1) * 0.5);
+
+      const sx = origX * rxScale;
+      // Recortamos suavemente el polo inferior (ny < -0.74) para que nunca asome por debajo de la bolsita
+      const clampedY = Math.max(origY, -0.282 * 0.74);
+      const sy = clampedY * ryScale;
+      const sz = origZ * 0.40;
+      ePos.setXYZ(i, sx, sy, sz);
+    }
+    eUv.needsUpdate = true;
+    eyeGeo.computeVertexNormals();
+    const eyeMesh = new THREE.Mesh(eyeGeo, unifiedEyeMat);
+    eyeGroup.add(eyeMesh);
+
+    return eyeGroup;
+  }
+
+  headMesh.add(createRecessedEye(-1));
+  headMesh.add(createRecessedEye(1));
+
+  // =========================================================
+  // 3. BOCA: SONRISA FINA VISIBLE EN LA SUPERFICIE + VERSION DIENTES
+  // =========================================================
+  const smileGroup = new THREE.Group();
+  smileGroup.position.set(0.064, -0.196, 0.742);
+  smileGroup.rotation.y = 0.12;
+  smileGroup.rotation.z = -0.05;
+
+  const smileCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.104, 0.028, -0.008),
+    new THREE.Vector3(-0.032, -0.024, 0.012),
+    new THREE.Vector3(0.038, -0.025, 0.012),
+    new THREE.Vector3(0.098, 0.014, -0.008)
+  ]);
+  const smileGeo = new THREE.TubeGeometry(smileCurve, 32, 0.0075, 12, false);
+  const smileMesh = new THREE.Mesh(smileGeo, mouthDarkMat);
+  smileGroup.add(smileMesh);
+  headMesh.add(smileGroup);
+
+  const mouthTeethGroup = new THREE.Group();
+  mouthTeethGroup.position.set(0.064, -0.212, 0.725);
+  mouthTeethGroup.rotation.y = 0.12;
+  mouthTeethGroup.rotation.z = -0.05;
+  const mouthBgGeo = new RoundedBoxGeometry(0.30, 0.15, 0.06, 5, 0.06);
+  const mouthBg = new THREE.Mesh(mouthBgGeo, mouthDarkMat);
+  mouthTeethGroup.add(mouthBg);
+
+  const toothMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+  for (let i = -1.5; i <= 1.5; i += 1) {
+    const tTop = new THREE.Mesh(new RoundedBoxGeometry(0.052, 0.048, 0.04, 3, 0.016), toothMat);
+    tTop.position.set(i * 0.058, 0.040, 0.022);
+    mouthTeethGroup.add(tTop);
+
+    const tBot = new THREE.Mesh(new RoundedBoxGeometry(0.048, 0.044, 0.04, 3, 0.015), toothMat);
+    tBot.position.set(i * 0.056, -0.042, 0.022);
+    mouthTeethGroup.add(tBot);
+  }
+  mouthTeethGroup.visible = showTeeth;
+  smileGroup.visible = !showTeeth;
+  headMesh.add(mouthTeethGroup);
+
+  // =========================================================
+  // 4. HOJITA LATERAL CARNOSA CON SILUETA EN "S" Y PUNTA REDONDEADA
+  // =========================================================
+  const sideLeafGroup = new THREE.Group();
+  sideLeafGroup.position.set(0.16, 0.718, 0.12);
+  sideLeafGroup.rotation.y = -0.22;
+  sideLeafGroup.rotation.z = 0.04;
+
+  const sideLeafGeo = createSideLeafGeometry();
+  const sideLeafMesh = new THREE.Mesh(sideLeafGeo, sideLeafMat);
+  sideLeafMesh.castShadow = true;
+  sideLeafMesh.receiveShadow = true;
+  sideLeafGroup.add(sideLeafMesh);
+  headMesh.add(sideLeafGroup);
+
+  // =========================================================
+  // 5. TALLO CENTRAL CON SURCO CENTRAL (BROTANDO DE LA TIERRA) + 2 BROTES + HOJA SUPERIOR
+  // =========================================================
+  const stemPivot = new THREE.Group();
+  stemPivot.position.set(0.005, 0.685, 0.0);
+  headMesh.add(stemPivot);
+
+  const mainStemCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.0, 0.0, 0),
+    new THREE.Vector3(-0.004, 0.40, 0),
+    new THREE.Vector3(-0.022, 0.80, 0),
+    new THREE.Vector3(-0.072, 1.20, 0)
+  ]);
+
+  const stemSegments = 60;
+  const stemRadial = 28;
+  const stemGeo = new THREE.TubeGeometry(mainStemCurve, stemSegments, 0.048, stemRadial, false);
+  const stPos = stemGeo.attributes.position;
+  const centerPt = new THREE.Vector3();
+  const vertPt = new THREE.Vector3();
+
+  for (let i = 0; i <= stemSegments; i++) {
+    const t = i / stemSegments;
+    mainStemCurve.getPointAt(t, centerPt);
+    const baseFlare = Math.exp(-t * 8.5) * 0.62;
+    const midJunction = Math.exp(-Math.pow((t - 0.50) / 0.10, 2)) * 0.24;
+    const radiusScale = (1.0 - 0.36 * t) + baseFlare + midJunction;
+
+    for (let j = 0; j <= stemRadial; j++) {
+      const idx = i * (stemRadial + 1) + j;
+      vertPt.fromBufferAttribute(stPos, idx);
+      const offset = vertPt.clone().sub(centerPt);
+      const angle = Math.atan2(offset.z, offset.x);
+      // Surco vertical central en la cara frontal (+Z, angle = PI/2) como dos tallitos fusionados
+      const frontGroove = offset.z > 0 ? -0.18 * Math.exp(-Math.pow(offset.x / 0.018, 2)) : 0;
+      const rib = 1.0 + 0.06 * Math.cos(angle * 4) + frontGroove;
+      offset.multiplyScalar(radiusScale * rib);
+      stPos.setXYZ(idx, centerPt.x + offset.x, centerPt.y + offset.y, centerPt.z + offset.z);
+    }
+  }
+  stemGeo.computeVertexNormals();
+  const mainStemMesh = new THREE.Mesh(stemGeo, stemGreenMat);
+  mainStemMesh.castShadow = true;
+  stemPivot.add(mainStemMesh);
+
+  // Brote lateral izquierdo (alargado tipo oliva con surco central)
+  const leftShootGroup = new THREE.Group();
+  leftShootGroup.position.set(-0.012, 0.54, 0);
+  const leftShootCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(-0.046, 0.095, 0),
+    new THREE.Vector3(-0.122, 0.19, 0)
+  ]);
+  const leftShootStalk = new THREE.Mesh(new THREE.TubeGeometry(leftShootCurve, 16, 0.021, 12, false), stemGreenMat);
+  leftShootGroup.add(leftShootStalk);
+
+  const leftBudGeo = createPlumpPodLeafGeometry(0.054, 0.24, 0.054, 0.01, 0.015);
+  const leftBud = new THREE.Mesh(leftBudGeo, budLeafMat);
+  leftBud.position.set(-0.112, 0.175, 0);
+  leftBud.rotation.z = 0.86;
+  leftBud.castShadow = true;
+  leftShootGroup.add(leftBud);
+  stemPivot.add(leftShootGroup);
+
+  // Brote lateral derecho
+  const rightShootGroup = new THREE.Group();
+  rightShootGroup.position.set(-0.008, 0.58, 0);
+  const rightShootCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0.032, 0.105, 0),
+    new THREE.Vector3(0.058, 0.21, 0)
+  ]);
+  const rightShootStalk = new THREE.Mesh(new THREE.TubeGeometry(rightShootCurve, 16, 0.020, 12, false), stemGreenMat);
+  rightShootGroup.add(rightShootStalk);
+
+  const rightBudGeo = createPlumpPodLeafGeometry(0.052, 0.23, 0.052, 0.01, 0.014);
+  const rightBud = new THREE.Mesh(rightBudGeo, budLeafMat);
+  rightBud.position.set(0.054, 0.195, 0);
+  rightBud.rotation.z = -0.14;
+  rightBud.castShadow = true;
+  rightShootGroup.add(rightBud);
+  stemPivot.add(rightShootGroup);
+
+  // Hoja superior grande con punta redondeada
+  const topLeafPivot = new THREE.Group();
+  topLeafPivot.position.set(-0.068, 1.17, 0);
+  topLeafPivot.rotation.z = 0.42;
+  topLeafPivot.rotation.y = 0.08;
+
+  const topLeafGeo = createPlumpPodLeafGeometry(0.168, 0.62, 0.084, 0.020, 0.0);
+  const topLeafMesh = new THREE.Mesh(topLeafGeo, topLeafMat);
+  topLeafMesh.castShadow = true;
+  topLeafPivot.add(topLeafMesh);
+  stemPivot.add(topLeafPivot);
+
+  // =========================================================
+  // 6. BRAZOS EN JARRAS CALIBRADOS
+  // =========================================================
+  function createDetailedArm(side) {
+    const armPivot = new THREE.Group();
+    armPivot.position.set(
+      side === -1 ? -0.66 : 0.64,
+      side === -1 ? 1.56 : 1.46,
+      side === -1 ? 0.06 : -0.04
+    );
+
+    const armCurve = new THREE.CatmullRomCurve3(
+      side === -1
+        ? [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(-0.15, -0.07, -0.01),
+            new THREE.Vector3(-0.21, -0.24, 0.03),
+            new THREE.Vector3(-0.09, -0.40, 0.12),
+            new THREE.Vector3(0.02, -0.47, 0.18)
+          ]
+        : [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0.12, -0.07, -0.01),
+            new THREE.Vector3(0.16, -0.22, 0.04),
+            new THREE.Vector3(0.06, -0.36, 0.13),
+            new THREE.Vector3(-0.04, -0.42, 0.19)
+          ]
+    );
+
+    const armSegments = 48;
+    const armRadial = 24;
+    const armGeo = new THREE.TubeGeometry(armCurve, armSegments, 0.136, armRadial, false);
+
+    const aPos = armGeo.attributes.position;
+    const cPt = new THREE.Vector3();
+    const vPt = new THREE.Vector3();
+    for (let i = 0; i <= armSegments; i++) {
+      const t = i / armSegments;
+      armCurve.getPointAt(t, cPt);
+      let rScale;
+      if (t < 0.18) {
+        rScale = 0.85 + 0.15 * (t / 0.18);
+      } else if (t < 0.80) {
+        rScale = 1.0 + 0.13 * Math.sin(((t - 0.18) / 0.62) * Math.PI);
+      } else {
+        const u = (t - 0.80) / 0.20;
+        rScale = 1.0 * Math.cos(u * Math.PI * 0.32);
+      }
+
+      for (let j = 0; j <= armRadial; j++) {
+        const idx = i * (armRadial + 1) + j;
+        vPt.fromBufferAttribute(aPos, idx);
+        vPt.sub(cPt).multiplyScalar(rScale).add(cPt);
+        aPos.setXYZ(idx, vPt.x, vPt.y, vPt.z);
+      }
+    }
+    armGeo.computeVertexNormals();
+    const armMesh = new THREE.Mesh(armGeo, armMatWithStripes);
+    armMesh.castShadow = true;
+    armMesh.receiveShadow = true;
+    armPivot.add(armMesh);
+
+    const handPoint = armCurve.getPointAt(0.96);
+    const handGroup = new THREE.Group();
+    handGroup.position.copy(handPoint);
+
+    const palmCap = new THREE.Mesh(new THREE.SphereGeometry(0.114, 20, 20), limbGreenMat);
+    palmCap.scale.set(1.0, 0.86, 0.92);
+    handGroup.add(palmCap);
+
+    for (let f = 0; f < 4; f++) {
+      const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.034, 0.082, 8, 12), limbGreenMat);
+      finger.position.set(
+        side * (-0.060 + f * 0.025),
+        -0.052 - (3 - f) * 0.015,
+        0.042 - f * 0.016
+      );
+      finger.rotation.z = side * (0.48 + f * 0.08);
+      finger.rotation.x = 0.24;
+      finger.castShadow = true;
+      handGroup.add(finger);
+    }
+
+    armPivot.add(handGroup);
+    return { armPivot, handGroup };
+  }
+
+  const leftArmObj = createDetailedArm(-1);
+  const rightArmObj = createDetailedArm(1);
+  bodyPivot.add(leftArmObj.armPivot);
+  bodyPivot.add(rightArmObj.armPivot);
+
+  // Espada y escudo opcionales (para el modo juego)
+  const swordGroup = new THREE.Group();
+  swordGroup.position.set(0.05, -0.42, 0.30);
+  swordGroup.rotation.x = Math.PI / 2.2;
+  const hilt = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.035, 0.035, 0.24, 8),
+    new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.6 })
+  );
+  const guard = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.06, 0.09),
+    new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.5, roughness: 0.3 })
+  );
+  guard.position.y = 0.12;
+  const blade = new THREE.Mesh(
+    new THREE.ConeGeometry(0.095, 0.92, 4),
+    new THREE.MeshStandardMaterial({
+      color: 0xe2e8f0,
+      emissive: 0x38bdf8,
+      emissiveIntensity: 0.18,
+      metalness: 0.6,
+      roughness: 0.2,
+      flatShading: true
+    })
+  );
+  blade.position.y = 0.58;
+  blade.rotation.y = Math.PI / 4;
+  swordGroup.add(hilt, guard, blade);
+  swordGroup.visible = showWeapons;
+  rightArmObj.armPivot.add(swordGroup);
+
+  const shieldGroup = new THREE.Group();
+  shieldGroup.position.set(-0.08, -0.40, 0.26);
+  shieldGroup.rotation.y = -0.45;
+  const shieldMesh = new THREE.Mesh(
+    new RoundedBoxGeometry(0.36, 0.44, 0.06, 3, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+  );
+  const shieldRim = new THREE.Mesh(
+    new RoundedBoxGeometry(0.4, 0.48, 0.04, 3, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3 })
+  );
+  shieldRim.position.z = -0.01;
+  shieldGroup.add(shieldMesh, shieldRim);
+  shieldGroup.visible = showWeapons;
+  leftArmObj.armPivot.add(shieldGroup);
+
+  // =========================================================
+  // 7. PIERNAS Y TENIS/BOTAS CON DOBLE COLLAR BLANCO, PUNTERA ILUMINADA Y AGUJETAS
+  // =========================================================
+  const sharedBootGeo = createSolidSneakerGeometry();
+  const sharedSoleGeo = createSolidSoleGeometry();
+
+  function createDetailedLeg(side) {
+    const legPivot = new THREE.Group();
+    legPivot.position.set(side * 0.182, 1.25, side === 1 ? -0.055 : 0.030);
+
+    const legCylGeo = new THREE.CylinderGeometry(0.156, 0.154, 0.78, 36);
+    const legCyl = new THREE.Mesh(legCylGeo, limbGreenMat);
+    legCyl.position.y = -0.36;
+    legCyl.castShadow = true;
+    legCyl.receiveShadow = true;
+    legPivot.add(legCyl);
+
+    const bootGroup = new THREE.Group();
+    bootGroup.position.set(0, -0.78, 0.0);
+    bootGroup.rotation.y = side === -1 ? 0.04 : -0.15;
+
+    const bootMesh = new THREE.Mesh(sharedBootGeo, bootGreenMat);
+    bootMesh.castShadow = true;
+    bootMesh.receiveShadow = true;
+    bootGroup.add(bootMesh);
+
+    const collarPointsTop = [];
+    const collarPointsBot = [];
+    const collarSteps = 36;
+    for (let i = 0; i <= collarSteps; i++) {
+      const a = (i / collarSteps) * Math.PI * 2;
+      const cx = Math.cos(a) * 0.160;
+      const cz = Math.sin(a) * 0.160;
+      const dip = cz > 0 ? Math.pow(cz / 0.160, 2) * 0.014 : 0;
+      collarPointsTop.push(new THREE.Vector3(cx, 0.048 - dip, cz));
+      collarPointsBot.push(new THREE.Vector3(cx * 1.01, 0.032 - dip, cz * 1.01));
+    }
+    const collarRimTop = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(collarPointsTop, true), 40, 0.0085, 10, true),
+      whiteTrimMat
+    );
+    const collarRimBot = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(collarPointsBot, true), 40, 0.0075, 10, true),
+      whiteTrimMat
+    );
+    bootGroup.add(collarRimTop, collarRimBot);
+
+    const soleMesh = new THREE.Mesh(sharedSoleGeo, soleGreenMat);
+    soleMesh.castShadow = true;
+    soleMesh.receiveShadow = true;
+    bootGroup.add(soleMesh);
+
+    const laceGroup = new THREE.Group();
+    for (let l = 0; l < 3; l++) {
+      const yLace = 0.002 - l * 0.036;
+      const zLace = 0.190 + l * 0.025;
+      const bar = new THREE.Mesh(new THREE.CapsuleGeometry(0.0075, 0.088, 6, 10), whiteTrimMat);
+      bar.rotation.z = Math.PI / 2;
+      bar.position.set(0, yLace, zLace);
+      laceGroup.add(bar);
+
+      if (l < 2) {
+        const diag = new THREE.Mesh(new THREE.CapsuleGeometry(0.0068, 0.084, 6, 10), whiteTrimMat);
+        diag.rotation.z = Math.PI / 2 + (l % 2 === 0 ? -0.25 : 0.25);
+        diag.rotation.x = 0.58;
+        diag.position.set(0, yLace - 0.018, zLace + 0.014);
+        laceGroup.add(diag);
+      }
+    }
+    bootGroup.add(laceGroup);
+
+    legPivot.add(bootGroup);
+    return legPivot;
+  }
+
+  const leftLeg = createDetailedLeg(-1);
+  const rightLeg = createDetailedLeg(1);
+  bodyPivot.add(leftLeg, rightLeg);
+
+  // Efecto Slash de espada para el juego
+  const slashGeo = new THREE.RingGeometry(0.9, 1.75, 24, 1, -Math.PI * 0.65, Math.PI * 1.3);
+  const slashMat = new THREE.MeshBasicMaterial({
+    color: 0xfef08a,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0
+  });
+  const slashMesh = new THREE.Mesh(slashGeo, slashMat);
+  slashMesh.rotation.x = Math.PI / 2;
+  slashMesh.position.set(0, 1.2, 0.35);
+  root.add(slashMesh);
+
+  return {
+    root,
+    bodyPivot,
+    headMesh,
+    stemPivot,
+    leftArm: leftArmObj.armPivot,
+    rightArm: rightArmObj.armPivot,
+    leftLeg,
+    rightLeg,
+    swordGroup,
+    shieldGroup,
+    slashMesh,
+    slashMat,
+    mouthTeethGroup,
+    smileGroup
+  };
+}
+
+
+    // --- ESCENA, RENDERER PBR Y CAMARA ISOMETRICA ESTILO TUNIC ---
+    const canvas = document.getElementById('game-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.10;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1668c4);
+    scene.fog = new THREE.FogExp2(0x1b74d0, 0.008);
+
+    // Entorno PBR suave para reflejos realistas sin lavar las sombras proyectadas
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environmentIntensity = 0.14;
+
+    let zoomScale = 7.2;
+    const aspect = window.innerWidth / window.innerHeight;
+    const isoCamera = new THREE.OrthographicCamera(
+      -zoomScale * aspect,
+      zoomScale * aspect,
+      zoomScale,
+      -zoomScale,
+      -60,
+      140
+    );
+
+    const studioCamera = new THREE.PerspectiveCamera(28, aspect, 0.1, 100);
+    let activeCamera = isoCamera;
+    let studioMode = false;
+
+    const isoOffset = new THREE.Vector3(20, 21.5, 20);
+    isoCamera.position.copy(isoOffset);
+    isoCamera.lookAt(0, 1.5, 0);
+
+    // --- SISTEMA DE ILUMINACION CINEMATOGRAFICA Y SOMBRAS PROFUNDAS ESTILO TUNIC ---
+    // Contraste calido/frio autentico para que cada arbol, acantilado, escalon y personaje proyecte sombras nitidas y ricas
+    const ambientLight = new THREE.HemisphereLight(0xfff0cc, 0x261a42, 0.42);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffe8ad, 3.45);
+    const sunOffset = new THREE.Vector3(-16, 19, 12);
+    sunLight.position.copy(sunOffset);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(4096, 4096);
+    sunLight.shadow.camera.left = -22;
+    sunLight.shadow.camera.right = 22;
+    sunLight.shadow.camera.top = 22;
+    sunLight.shadow.camera.bottom = -22;
+    sunLight.shadow.camera.near = 1;
+    sunLight.shadow.camera.far = 80;
+    sunLight.shadow.bias = -0.0003;
+    sunLight.shadow.normalBias = 0.015;
+    scene.add(sunLight);
+    scene.add(sunLight.target);
+
+    const rimLight = new THREE.DirectionalLight(0x6366f1, 0.40);
+    rimLight.position.set(18, 10, -16);
+    scene.add(rimLight);
+
+    // --- TEXTURAS PROCEDURALES RICAS PARA PASTO, ACANTILADOS Y ARENA ---
+    function createStylizedGrassTexture(baseHex, lightHex, darkHex) {
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = baseHex;
+      ctx.fillRect(0, 0, 512, 512);
+
+      let s = 42;
+      const rnd = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+
+      for (let i = 0; i < 160; i++) {
+        const x = rnd() * 512;
+        const y = rnd() * 512;
+        const r = 14 + rnd() * 34;
+        ctx.fillStyle = rnd() > 0.45 ? lightHex : darkHex;
+        ctx.globalAlpha = 0.14;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 0.22;
+      for (let i = 0; i < 450; i++) {
+        const x = rnd() * 512;
+        const y = rnd() * 512;
+        ctx.fillStyle = rnd() > 0.5 ? lightHex : darkHex;
+        ctx.fillRect(x, y, 3, 9 + rnd() * 8);
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(3, 3);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function createCliffStrataTexture() {
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 0, 512);
+      grad.addColorStop(0.0, '#d87378');
+      grad.addColorStop(0.45, '#c45d68');
+      grad.addColorStop(0.82, '#9e4458');
+      grad.addColorStop(1.0, '#78314c');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 512, 512);
+
+      let s = 109;
+      const rnd = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+      for (let i = 0; i < 24; i++) {
+        const y = i * 22 + rnd() * 8;
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(255, 215, 205, 0.09)' : 'rgba(65, 20, 42, 0.14)';
+        ctx.fillRect(0, y, 512, 6 + rnd() * 8);
+      }
+      for (let i = 0; i < 40; i++) {
+        const x = rnd() * 512;
+        const y = rnd() * 512;
+        ctx.fillStyle = 'rgba(55, 18, 35, 0.16)';
+        ctx.fillRect(x, y, 3 + rnd() * 4, 24 + rnd() * 48);
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2, 1);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function createSandTexture() {
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#e7cd8b';
+      ctx.fillRect(0, 0, 512, 512);
+      let s = 77;
+      const rnd = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+      for (let i = 0; i < 500; i++) {
+        ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,250,225,0.22)' : 'rgba(185,148,82,0.18)';
+        ctx.beginPath();
+        ctx.arc(rnd() * 512, rnd() * 512, 2 + rnd() * 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(3, 3);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    const grassTopTex = createStylizedGrassTexture('#9ec95c', '#bae074', '#79a63e');
+    const grassMidTex = createStylizedGrassTexture('#8eba50', '#aad168', '#6b9634');
+    const cliffTex = createCliffStrataTexture();
+    const sandTex = createSandTexture();
+
+    const mats = {
+      grassTop: new THREE.MeshStandardMaterial({ map: grassTopTex, roughness: 0.76, metalness: 0.02 }),
+      grassMid: new THREE.MeshStandardMaterial({ map: grassMidTex, roughness: 0.78, metalness: 0.02 }),
+      cliffTerracotta: new THREE.MeshStandardMaterial({ map: cliffTex, roughness: 0.80, bumpMap: cliffTex, bumpScale: 0.02 }),
+      cliffPurple: new THREE.MeshStandardMaterial({ color: 0x582966, roughness: 0.82, flatShading: true }),
+      sand: new THREE.MeshStandardMaterial({ map: sandTex, roughness: 0.85, bumpMap: sandTex, bumpScale: 0.01 }),
+      wetSand: new THREE.MeshStandardMaterial({ color: 0xc29f59, roughness: 0.45 }),
+      stone: new THREE.MeshStandardMaterial({ color: 0x94889c, roughness: 0.72 }),
+      stoneFaceted: new THREE.MeshStandardMaterial({ color: 0x8e8296, roughness: 0.75, flatShading: true }),
+      stoneDark: new THREE.MeshStandardMaterial({ color: 0x4a4256, roughness: 0.78 }),
+      stoneLight: new THREE.MeshStandardMaterial({ color: 0xded7c8, roughness: 0.65 }),
+      stoneMoss: new THREE.MeshStandardMaterial({ color: 0x73a942, roughness: 0.75, flatShading: true }),
+      woodDock: new THREE.MeshStandardMaterial({ color: 0x8f5b34, roughness: 0.76 }),
+      woodDark: new THREE.MeshStandardMaterial({ color: 0x4f2d16, roughness: 0.82 }),
+      pineDark: new THREE.MeshStandardMaterial({ color: 0x2d2947, roughness: 0.76, flatShading: true }),
+      pineMid: new THREE.MeshStandardMaterial({ color: 0x433f63, roughness: 0.74, flatShading: true }),
+      pineLight: new THREE.MeshStandardMaterial({ color: 0x5c5880, roughness: 0.72, flatShading: true }),
+      bushMain: new THREE.MeshStandardMaterial({ color: 0x6ea838, roughness: 0.68, flatShading: true }),
+      bushLight: new THREE.MeshStandardMaterial({ color: 0x89c24c, roughness: 0.65, flatShading: true }),
+      goldCube: new THREE.MeshStandardMaterial({
+        color: 0xffe066,
+        emissive: 0xd97706,
+        emissiveIntensity: 0.38,
+        roughness: 0.25,
+        metalness: 0.55
+      }),
+      shrineCyan: new THREE.MeshStandardMaterial({
+        color: 0x67e8f9,
+        emissive: 0x06b6d4,
+        emissiveIntensity: 1.65,
+        roughness: 0.15
+      }),
+      lanternGlow: new THREE.MeshStandardMaterial({
+        color: 0xffd166,
+        emissive: 0xff7b00,
+        emissiveIntensity: 2.2,
+        roughness: 0.15
+      })
+    };
+
+    // --- CONSTRUCCION DEL MAPA DIORAMA ESTILO TUNIC MEJORADO ---
+    const worldGroup = new THREE.Group();
+    scene.add(worldGroup);
+
+    // 1. Oceano multicapa con fondo profundo, arrecife turquesa en la costa y superficie PBR con olas suaves
+    const deepWater = new THREE.Mesh(
+      new THREE.PlaneGeometry(180, 180),
+      new THREE.MeshBasicMaterial({ color: 0x0f4c9c })
+    );
+    deepWater.rotation.x = -Math.PI / 2;
+    deepWater.position.y = -0.95;
+    scene.add(deepWater);
+
+    const shallowReef = new THREE.Mesh(
+      new RoundedBoxGeometry(27.5, 0.25, 25.0, 6, 0.12),
+      new THREE.MeshBasicMaterial({ color: 0x22b8cf, transparent: true, opacity: 0.42 })
+    );
+    shallowReef.position.set(-0.2, -0.52, 0.4);
+    scene.add(shallowReef);
+
+    const waterGeo = new THREE.PlaneGeometry(160, 160, 72, 72);
+    const waterMat = new THREE.MeshPhysicalMaterial({
+      color: 0x1d7be8,
+      roughness: 0.14,
+      metalness: 0.05,
+      clearcoat: 0.75,
+      clearcoatRoughness: 0.18,
+      transparent: true,
+      opacity: 0.86
+    });
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = -0.34;
+    water.receiveShadow = true;
+    scene.add(water);
+
+    const foamLines = [];
+    function addFoamStrip(x, z, w, d, rotY = 0) {
+      const geo = new THREE.PlaneGeometry(w, d);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.85 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.rotation.z = rotY;
+      mesh.position.set(x, -0.31, z);
+      scene.add(mesh);
+      foamLines.push({ mesh, baseX: x, baseZ: z, w, d, phase: Math.random() * Math.PI * 2 });
+    }
+
+    function createBeveledBlock(x, yTop, z, w, h, d, mat, radius = 0.14, cast = true) {
+      const geo = new RoundedBoxGeometry(w, h, d, 4, radius);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, yTop - h / 2, z);
+      mesh.castShadow = cast;
+      mesh.receiveShadow = true;
+      worldGroup.add(mesh);
+      return mesh;
+    }
+
+    // --- NIVEL 0: PLAYA DORADA Y MUELLE DE MADERA (y = 0) ---
+    createBeveledBlock(1.5, -0.08, 1.5, 17.6, 0.9, 15.6, mats.wetSand, 0.25);
+    createBeveledBlock(1.5, 0.0, 1.5, 17.0, 0.95, 15.0, mats.sand, 0.22);
+
+    addFoamStrip(1.5, 9.25, 17.6, 0.28);
+    addFoamStrip(10.25, 1.5, 0.28, 15.6);
+    addFoamStrip(-7.2, 5.2, 0.28, 8.4);
+    addFoamStrip(-5.8, -8.85, 10.2, 0.28);
+
+    // Muelle de madera en la playa sur
+    const dockGroup = new THREE.Group();
+    for (let i = 0; i < 7; i++) {
+      const plank = new THREE.Mesh(new RoundedBoxGeometry(2.1, 0.12, 0.36, 3, 0.03), mats.woodDock);
+      plank.position.set(2.2, 0.08, 8.3 + i * 0.44);
+      plank.castShadow = true;
+      plank.receiveShadow = true;
+      dockGroup.add(plank);
+    }
+    [[-0.85, 8.5], [0.85, 8.5], [-0.85, 10.8], [0.85, 10.8]].forEach(([dx, pz]) => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.15, 10), mats.woodDark);
+      post.position.set(2.2 + dx, -0.15, pz);
+      post.castShadow = true;
+      post.receiveShadow = true;
+      dockGroup.add(post);
+    });
+    worldGroup.add(dockGroup);
+
+    // --- NIVEL 1: TERRAZA CENTRAL CON ACANTILADO BISELADO Y CAPA DE PASTO (y = 1.65) ---
+    createBeveledBlock(-0.8, 1.52, 0.2, 10.5, 1.65, 8.2, mats.cliffTerracotta, 0.18);
+    createBeveledBlock(-0.8, 1.65, 0.2, 10.68, 0.24, 8.38, mats.grassMid, 0.10);
+
+    [[-5.8, 4.1], [4.2, 4.1], [-5.8, -3.7]].forEach(([cx, cz]) => {
+      for (let k = 0; k < 3; k++) {
+        createBeveledBlock(cx, 0.55 + k * 0.45, cz, 0.55, 0.40, 0.55, mats.stone, 0.06);
+      }
+    });
+
+    // --- NIVEL 2: COLINA ALTA DEL BOSQUE (y = 3.25) ---
+    createBeveledBlock(-5.8, 3.12, -3.5, 9.5, 3.6, 10.5, mats.cliffTerracotta, 0.20);
+    createBeveledBlock(-5.8, 3.25, -3.5, 9.68, 0.26, 10.68, mats.grassTop, 0.11);
+
+    // --- SANTUARIO DE PIEDRA DERECHO CON MONOLITO Y RUINAS (y = 3.24) ---
+    createBeveledBlock(4.8, 3.20, -3.2, 3.35, 3.65, 7.7, mats.stone, 0.14);
+    createBeveledBlock(4.8, 3.24, -3.2, 2.95, 0.10, 7.2, mats.stoneLight, 0.04);
+    // Puente/plataforma de piedra limpia al final de las escaleras (z = -5.1) hacia los cuadraditos dorados
+    createBeveledBlock(1.1, 3.24, -5.1, 4.5, 0.36, 1.95, mats.stoneLight, 0.06);
+    // Pilares arquitectonicos en los costados del muro del santuario derecho
+    for (let pz of [-6.5, -4.3, -2.1, 0.1]) {
+      createBeveledBlock(3.15, 3.22, pz, 0.32, 3.62, 0.42, mats.stoneDark, 0.05);
+      createBeveledBlock(6.45, 3.22, pz, 0.32, 3.62, 0.42, mats.stoneDark, 0.05);
+    }
+
+    // --- CUADRADITOS DORADOS DESTRUCTIBLES (SE ROMPEN CON CLICK/J O CON LA TECLA E) ---
+    const breakableCubes = [];
+    const cubePositions = [
+      { x: 4.8, y: 3.72, z: -5.0, phase: 0.0 },
+      { x: 4.8, y: 3.72, z: -3.45, phase: 1.4 },
+      { x: 4.8, y: 3.72, z: -1.9, phase: 2.8 }
+    ];
+
+    function spawnGoldCubes() {
+      breakableCubes.forEach(c => worldGroup.remove(c.mesh));
+      breakableCubes.length = 0;
+      cubePositions.forEach((pos) => {
+        const cube = new THREE.Mesh(new RoundedBoxGeometry(0.82, 0.82, 0.82, 4, 0.08), mats.goldCube);
+        cube.position.set(pos.x, pos.y, pos.z);
+        cube.rotation.y = Math.PI / 4;
+        cube.castShadow = true;
+        cube.receiveShadow = true;
+        worldGroup.add(cube);
+        breakableCubes.push({
+          mesh: cube,
+          x: pos.x,
+          y: pos.y,
+          z: pos.z,
+          baseY: pos.y,
+          phase: pos.phase,
+          alive: true
+        });
+      });
+    }
+    spawnGoldCubes();
+
+    // Monolito / Santuario Heroico estilo Tunic con luz propia en la colina superior
+    const shrineGroup = new THREE.Group();
+    shrineGroup.position.set(-3.2, 3.25, -6.8);
+    const shrineBase = new THREE.Mesh(new RoundedBoxGeometry(1.7, 0.28, 1.7, 4, 0.06), mats.stoneLight);
+    shrineBase.position.y = 0.14;
+    shrineBase.castShadow = true;
+    shrineBase.receiveShadow = true;
+    const shrineStep = new THREE.Mesh(new RoundedBoxGeometry(1.25, 0.24, 1.25, 4, 0.05), mats.stone);
+    shrineStep.position.y = 0.38;
+    shrineStep.castShadow = true;
+    shrineStep.receiveShadow = true;
+    const obeliskPillar = new THREE.Mesh(new RoundedBoxGeometry(0.68, 2.35, 0.48, 4, 0.07), mats.stoneDark);
+    obeliskPillar.position.y = 1.62;
+    obeliskPillar.castShadow = true;
+    obeliskPillar.receiveShadow = true;
+
+    const obeliskGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.30, 0), mats.shrineCyan);
+    obeliskGem.position.set(0, 3.15, 0);
+    obeliskGem.castShadow = true;
+    shrineGroup.add(shrineBase, shrineStep, obeliskPillar, obeliskGem);
+
+    const runeStrip1 = new THREE.Mesh(new THREE.BoxGeometry(0.10, 1.25, 0.50), mats.shrineCyan);
+    runeStrip1.position.set(0, 1.65, 0);
+    const runeStrip2 = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.10, 0.50), mats.shrineCyan);
+    runeStrip2.position.set(0, 1.85, 0);
+    shrineGroup.add(runeStrip1, runeStrip2);
+
+    const shrineLight = new THREE.PointLight(0x22d3ee, 2.4, 8.5);
+    shrineLight.position.set(0, 2.2, 0.6);
+    shrineGroup.add(shrineLight);
+    worldGroup.add(shrineGroup);
+
+    // Cofre del tesoro 3D
+    const chestGroup = new THREE.Group();
+    chestGroup.position.set(-8.5, 3.25, -6.9);
+    chestGroup.rotation.y = 0.45;
+    const chestBox = new THREE.Mesh(new RoundedBoxGeometry(0.95, 0.52, 0.66, 3, 0.05), mats.woodDock);
+    chestBox.position.y = 0.26;
+    chestBox.castShadow = true;
+    chestBox.receiveShadow = true;
+    const chestLid = new THREE.Mesh(new RoundedBoxGeometry(0.97, 0.30, 0.68, 4, 0.10), mats.woodDark);
+    chestLid.position.y = 0.62;
+    chestLid.castShadow = true;
+    const chestLock = new THREE.Mesh(new RoundedBoxGeometry(0.18, 0.24, 0.72, 2, 0.03), mats.goldCube);
+    chestLock.position.y = 0.50;
+    chestGroup.add(chestBox, chestLid, chestLock);
+    worldGroup.add(chestGroup);
+
+    // --- ESCALINATA TALLADA ENTRE TERRAZA MEDIA (y=1.65) Y COLINA ALTA (y=3.25) ---
+    const upperStairsCount = 8;
+    for (let i = 0; i < upperStairsCount; i++) {
+      const t = (i + 1) / upperStairsCount;
+      const stepY = THREE.MathUtils.lerp(1.65, 3.25, t);
+      const stepZ = THREE.MathUtils.lerp(0.1, -3.7, t);
+      createBeveledBlock(0.15, stepY, stepZ, 2.35, stepY - 1.55, 0.56, i % 2 === 0 ? mats.stoneLight : mats.stone, 0.05);
+    }
+    for (let side of [-1.20, 1.50]) {
+      const rail = new THREE.Mesh(new RoundedBoxGeometry(0.28, 0.45, 4.4, 3, 0.06), mats.stoneDark);
+      rail.position.set(side, 2.58, -1.8);
+      rail.rotation.x = Math.atan2(1.6, 4.0);
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      worldGroup.add(rail);
+    }
+
+    // --- ESCALERAS DE PIEDRA DE LA PLAYA (y=0) A LA TERRAZA MEDIA (y=1.65) ---
+    const numSteps = 9;
+    for (let i = 0; i < numSteps; i++) {
+      const t = (i + 1) / numSteps;
+      const stepY = t * 1.65;
+      const stepZ = 4.2 - i * 0.46;
+      createBeveledBlock(5.4, stepY, stepZ, 2.25, stepY + 0.1, 0.52, mats.stoneLight, 0.05);
+    }
+    createBeveledBlock(4.15, 0.85, 4.25, 0.42, 0.95, 0.42, mats.stone, 0.06);
+    createBeveledBlock(6.65, 0.85, 4.25, 0.42, 0.95, 0.42, mats.stone, 0.06);
+
+    // --- FAROLES DE PIEDRA CON LUZ REAL CALIDA ---
+    function addStoneLantern(x, y, z) {
+      const g = new THREE.Group();
+      g.position.set(x, y, z);
+      const base = new THREE.Mesh(new RoundedBoxGeometry(0.46, 0.18, 0.46, 3, 0.04), mats.stoneDark);
+      base.position.y = 0.09;
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.13, 0.65, 8), mats.stone);
+      post.position.y = 0.48;
+      post.castShadow = true;
+      const core = new THREE.Mesh(new RoundedBoxGeometry(0.26, 0.28, 0.26, 3, 0.04), mats.lanternGlow);
+      core.position.y = 0.92;
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.26, 4), mats.stoneDark);
+      cap.position.y = 1.16;
+      cap.rotation.y = Math.PI / 4;
+      cap.castShadow = true;
+
+      const light = new THREE.PointLight(0xffa94d, 1.65, 6.5);
+      light.position.set(0, 0.95, 0);
+      g.add(base, post, core, cap, light);
+      worldGroup.add(g);
+    }
+    addStoneLantern(3.85, 1.65, 0.35);
+    addStoneLantern(-1.45, 3.25, -3.85);
+
+    // Losas de camino de piedra sobre el pasto
+    const pathStones = [
+      [-0.5, 1.66, 2.2, 0.65, 0.48, 0.1],
+      [0.3, 1.66, 1.8, 0.52, 0.44, -0.2],
+      [1.2, 1.66, 1.6, 0.60, 0.50, 0.15],
+      [2.3, 1.66, 1.2, 0.58, 0.45, -0.1],
+      [3.3, 1.66, 0.7, 0.64, 0.48, 0.08],
+      [-2.0, 3.26, -4.5, 0.66, 0.52, 0.22],
+      [-2.7, 3.26, -5.5, 0.58, 0.48, -0.15]
+    ];
+    pathStones.forEach(([px, py, pz, pw, pd, rot]) => {
+      const st = new THREE.Mesh(new RoundedBoxGeometry(pw, 0.06, pd, 3, 0.025), mats.stoneLight);
+      st.position.set(px, py, pz);
+      st.rotation.y = rot;
+      st.receiveShadow = true;
+      worldGroup.add(st);
+    });
+
+    // Rocas costeras y de acantilado con facetas low-poly estilizadas estilo Tunic
+    function addLowPolyRock(x, y, z, scale = 1, mat = mats.stoneFaceted, withMoss = false) {
+      const geo = new THREE.DodecahedronGeometry(scale, 0);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, y, z);
+      mesh.scale.set(1.15, 0.82, 1.05);
+      mesh.rotation.set(x * 0.4, z * 0.7, 0.2);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      worldGroup.add(mesh);
+      if (withMoss) {
+        const moss = new THREE.Mesh(new THREE.DodecahedronGeometry(scale * 0.72, 0), mats.stoneMoss);
+        moss.position.set(x, y + scale * 0.36, z);
+        moss.scale.set(1.08, 0.38, 1.0);
+        moss.rotation.set(0.1, z * 0.5, 0.05);
+        moss.receiveShadow = true;
+        worldGroup.add(moss);
+      }
+    }
+    addLowPolyRock(-7.2, 0.55, 2.2, 1.25, mats.cliffPurple, true);
+    addLowPolyRock(-5.8, 0.35, 3.5, 0.92, mats.cliffPurple, false);
+    addLowPolyRock(-4.2, 0.30, 4.9, 0.80, mats.stoneFaceted, true);
+    addLowPolyRock(0.6, 0.08, 7.6, 0.85, mats.stoneFaceted, false);
+    addLowPolyRock(7.5, 0.42, -0.5, 0.72, mats.stoneFaceted, true);
+    addLowPolyRock(8.2, 0.15, 5.8, 0.65, mats.stoneFaceted, false);
+
+    // Nenufares flotando en el agua turquesa
+    function addWaterLily(x, z, scale = 1) {
+      const g = new THREE.Group();
+      g.position.set(x, -0.30, z);
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.42 * scale, 0.42 * scale, 0.03, 14, 1, false, 0, Math.PI * 1.82), mats.bushMain);
+      pad.receiveShadow = true;
+      g.add(pad);
+      const lotus = new THREE.Mesh(new THREE.SphereGeometry(0.12 * scale, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfbcfe8, roughness: 0.4 }));
+      lotus.position.y = 0.05;
+      lotus.scale.set(1, 0.65, 1);
+      g.add(lotus);
+      scene.add(g);
+    }
+    addWaterLily(-4.8, 7.2, 1.1);
+    addWaterLily(-3.9, 7.8, 0.85);
+    addWaterLily(6.8, 8.8, 1.0);
+
+    // Pinos multicapa estilo Tunic con sombras suaves y copas escalonadas
+    const swayingTrees = [];
+    function addPineTree(x, y, z, scale = 1) {
+      const tree = new THREE.Group();
+      tree.position.set(x, y, z);
+
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18 * scale, 0.30 * scale, 1.15 * scale, 8),
+        mats.woodDark
+      );
+      trunk.position.y = 0.55 * scale;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      tree.add(trunk);
+
+      const foliagePivot = new THREE.Group();
+      foliagePivot.position.y = 1.0 * scale;
+      tree.add(foliagePivot);
+
+      const layers = [
+        { r: 1.42, h: 1.85, y: 0.65, mat: mats.pineDark, rot: 0.0 },
+        { r: 1.16, h: 1.65, y: 1.55, mat: mats.pineMid, rot: 0.35 },
+        { r: 0.86, h: 1.45, y: 2.35, mat: mats.pineLight, rot: 0.70 }
+      ];
+      layers.forEach((l) => {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(l.r * scale, l.h * scale, 7), l.mat);
+        cone.position.y = l.y * scale;
+        cone.rotation.y = l.rot;
+        cone.castShadow = true;
+        cone.receiveShadow = true;
+        foliagePivot.add(cone);
+      });
+
+      worldGroup.add(tree);
+      swayingTrees.push({ pivot: foliagePivot, phase: x * 0.7 + z * 0.5 });
+    }
+    addPineTree(-6.5, 3.25, -1.1, 1.18);
+    addPineTree(-4.6, 3.25, -2.3, 0.96);
+    addPineTree(-8.1, 3.25, -5.2, 1.10);
+    addPineTree(-6.2, 3.25, -7.4, 0.88);
+
+    // Flores 3D detalladas con tallo y petalos
+    function addFlower(x, y, z, petalColor = 0xffffff) {
+      const f = new THREE.Group();
+      f.position.set(x, y + 0.04, z);
+      const center = new THREE.Mesh(
+        new THREE.SphereGeometry(0.075, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.4 })
+      );
+      center.scale.y = 0.55;
+      f.add(center);
+      const petalMat = new THREE.MeshStandardMaterial({ color: petalColor, roughness: 0.5 });
+      for (let a = 0; a < 5; a++) {
+        const ang = (a / 5) * Math.PI * 2;
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.068, 8, 8), petalMat);
+        p.scale.set(1.15, 0.42, 0.85);
+        p.position.set(Math.cos(ang) * 0.11, -0.01, Math.sin(ang) * 0.11);
+        p.rotation.y = -ang;
+        p.castShadow = true;
+        f.add(p);
+      }
+      worldGroup.add(f);
+    }
+    addFlower(-8.2, 3.25, -3.5, 0xffffff);
+    addFlower(-7.5, 3.25, -3.2, 0xfef08a);
+    addFlower(-2.1, 3.25, -6.9, 0xffffff);
+    addFlower(-1.5, 3.25, -6.6, 0xfbcfe8);
+    addFlower(-4.2, 1.65, 2.6, 0xffffff);
+    addFlower(-3.6, 1.65, 2.9, 0xfef08a);
+    addFlower(2.4, 0.0, 5.4, 0xffffff);
+
+    // --- ARBUSTOS REDONDEADOS FRONDOSOS INTERACTIVOS (ESTILO TUNIC) ---
+    const cuttableBushes = [];
+    const bushPositions = [
+      { x: 1.2, y: 1.65, z: 1.2 },
+      { x: 2.0, y: 1.65, z: 1.2 },
+      { x: 2.8, y: 1.65, z: 1.2 },
+      { x: 1.6, y: 1.65, z: 0.4 },
+      { x: 2.4, y: 1.65, z: 0.4 },
+      { x: -0.6, y: 1.65, z: 3.1 },
+      { x: -3.2, y: 1.65, z: 1.2 },
+      { x: -7.4, y: 3.25, z: -2.4 }
+    ];
+
+    const berryMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.35 });
+    function createBushMesh() {
+      const g = new THREE.Group();
+      const puffs = [
+        [0, 0.34, 0, 0.38, mats.bushMain],
+        [-0.22, 0.25, 0.16, 0.28, mats.bushLight],
+        [0.24, 0.26, 0.14, 0.29, mats.bushMain],
+        [0.04, 0.27, -0.22, 0.28, mats.bushLight],
+        [-0.16, 0.28, -0.15, 0.25, mats.bushMain]
+      ];
+      puffs.forEach(([ox, oy, oz, r, m], idx) => {
+        const puff = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), m);
+        puff.position.set(ox, oy, oz);
+        puff.rotation.set(idx * 0.5, idx * 0.8, idx * 0.3);
+        puff.scale.set(1.08, 0.95, 1.08);
+        puff.castShadow = true;
+        puff.receiveShadow = true;
+        g.add(puff);
+      });
+      [[-0.12, 0.46, 0.26], [0.18, 0.42, 0.22], [0.05, 0.56, -0.10]].forEach(([bx, by, bz]) => {
+        const berry = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 8), berryMat);
+        berry.position.set(bx, by, bz);
+        g.add(berry);
+      });
+      return g;
+    }
+
+    function spawnBushes() {
+      cuttableBushes.forEach(b => worldGroup.remove(b.mesh));
+      cuttableBushes.length = 0;
+      bushPositions.forEach(pos => {
+        const mesh = createBushMesh();
+        mesh.position.set(pos.x, pos.y, pos.z);
+        worldGroup.add(mesh);
+        cuttableBushes.push({ mesh, x: pos.x, y: pos.y, z: pos.z, alive: true });
+      });
+    }
+    spawnBushes();
+
+    // --- CREACION DEL PERSONAJE PLANTA CALIBRADO PIXEL A PIXEL (CON SONRISA FIJA Y SIN GIRO DE ESPALDA) ---
+    const character = createExactPlantCharacter({ showWeapons: false, showTeeth: false });
+    character.root.position.set(-0.5, 1.65, 1.2);
+    character.root.rotation.y = 0.34;
+    scene.add(character.root);
+
+    // Sombra de contacto realista bajo los pies (se atenua y encoge suavemente cuando brinca)
+    const contactCanvas = document.createElement('canvas');
+    contactCanvas.width = 256;
+    contactCanvas.height = 256;
+    const cCtx = contactCanvas.getContext('2d');
+    const cGrad = cCtx.createRadialGradient(128, 128, 12, 128, 128, 120);
+    cGrad.addColorStop(0.0, 'rgba(20, 14, 38, 0.62)');
+    cGrad.addColorStop(0.48, 'rgba(28, 18, 48, 0.32)');
+    cGrad.addColorStop(1.0, 'rgba(28, 18, 48, 0.0)');
+    cCtx.fillStyle = cGrad;
+    cCtx.fillRect(0, 0, 256, 256);
+    const contactTex = new THREE.CanvasTexture(contactCanvas);
+    const contactShadowMat = new THREE.MeshBasicMaterial({
+      map: contactTex,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0.85
+    });
+    const contactShadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 1.35), contactShadowMat);
+    contactShadowMesh.rotation.x = -Math.PI / 2;
+    contactShadowMesh.position.set(-0.5, 1.665, 1.2);
+    scene.add(contactShadowMesh);
+
+    // Escenario de estudio morado (visible al activar Vista Estudio Close-Up con 'C')
+    const studioBackdropGroup = new THREE.Group();
+    const studioBgMat = new THREE.MeshStandardMaterial({ color: 0x520b7e, roughness: 0.92 });
+    const studioFloor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), studioBgMat);
+    studioFloor.rotation.x = -Math.PI / 2;
+    studioFloor.receiveShadow = true;
+    const studioWall = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), studioBgMat);
+    studioWall.position.set(0, 12, -5);
+    studioBackdropGroup.add(studioFloor, studioWall);
+    studioBackdropGroup.visible = false;
+    scene.add(studioBackdropGroup);
+
+    // --- PARTICULAS (POLVO AL CORRER/BRINCAR, HOJAS AL CORTAR Y LUCIERNAGAS MAGICAS) ---
+    const particles = [];
+    const dustMat = new THREE.MeshBasicMaterial({ color: 0xfffbeb, transparent: true, opacity: 0.85 });
+    const leafPartMat = new THREE.MeshBasicMaterial({ color: 0x84cc16 });
+
+    const fireflies = [];
+    const fireflyMat = new THREE.MeshBasicMaterial({ color: 0xa5f3fc, transparent: true, opacity: 0.85 });
+    for (let i = 0; i < 18; i++) {
+      const ff = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 6), fireflyMat.clone());
+      const bx = -6.5 + Math.random() * 12.0;
+      const bz = -7.0 + Math.random() * 11.0;
+      const by = 2.0 + Math.random() * 2.8;
+      ff.position.set(bx, by, bz);
+      scene.add(ff);
+      fireflies.push({ mesh: ff, bx, by, bz, phase: Math.random() * Math.PI * 2, speed: 0.8 + Math.random() * 1.2 });
+    }
+
+    function spawnDust(x, y, z, count = 5) {
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.085 + Math.random() * 0.06, 6, 6), dustMat.clone());
+        p.position.set(x + (Math.random() - 0.5) * 0.4, y + 0.1, z + (Math.random() - 0.5) * 0.4);
+        scene.add(p);
+        particles.push({
+          mesh: p,
+          vx: (Math.random() - 0.5) * 2.0,
+          vy: 0.9 + Math.random() * 1.6,
+          vz: (Math.random() - 0.5) * 2.0,
+          life: 0.42,
+          maxLife: 0.42,
+          type: 'dust'
+        });
+      }
+    }
+
+    function spawnLeafBurst(x, y, z, count = 14) {
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.25, 4), leafPartMat);
+        p.position.set(x, y + 0.4, z);
+        p.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+        scene.add(p);
+        particles.push({
+          mesh: p,
+          vx: (Math.random() - 0.5) * 6.2,
+          vy: 2.4 + Math.random() * 4.0,
+          vz: (Math.random() - 0.5) * 6.2,
+          life: 0.72,
+          maxLife: 0.72,
+          type: 'leaf'
+        });
+      }
+    }
+
+    // Explosion de fragmentos dorados 3D cuando se rompe un cuadradito con Click/J o con E
+    function spawnCubeShatter(x, y, z, count = 20) {
+      for (let i = 0; i < count; i++) {
+        const size = 0.12 + Math.random() * 0.14;
+        const shard = new THREE.Mesh(
+          new RoundedBoxGeometry(size, size, size, 2, 0.02),
+          mats.goldCube
+        );
+        shard.position.set(
+          x + (Math.random() - 0.5) * 0.45,
+          y + (Math.random() - 0.5) * 0.45,
+          z + (Math.random() - 0.5) * 0.45
+        );
+        shard.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+        shard.castShadow = true;
+        scene.add(shard);
+        particles.push({
+          mesh: shard,
+          vx: (Math.random() - 0.5) * 8.5,
+          vy: 3.2 + Math.random() * 5.2,
+          vz: (Math.random() - 0.5) * 8.5,
+          life: 0.90,
+          maxLife: 0.90,
+          type: 'shard'
+        });
+      }
+      spawnDust(x, y - 0.3, z, 8);
+    }
+
+    // --- ALTURA DEL TERRENO DEL MAPA (COLISIONES Y ESCALERAS) ---
+    function getGroundHeight(x, z) {
+      // 0. Puente de piedra superior hacia los cuadraditos dorados (y = 3.24)
+      if (x >= -1.2 && x <= 3.4 && z >= -6.1 && z <= -3.7) {
+        return 3.24;
+      }
+      // 1. Escalinata superior entre Terraza Media (y=1.65) y Colina Alta (y=3.25)
+      if (x >= -1.15 && x <= 1.45 && z >= -4.1 && z <= 0.25) {
+        const t = THREE.MathUtils.clamp((0.25 - z) / 4.35, 0, 1);
+        return THREE.MathUtils.lerp(1.65, 3.25, t);
+      }
+      // 2. Colina Alta Izquierda (y = 3.25)
+      if (x >= -10.5 && x <= -1.0 && z >= -8.7 && z <= 1.7) {
+        return 3.25;
+      }
+      // 3. Santuario Superior Derecho donde estan los cuadraditos (y = 3.24)
+      if (x >= 3.1 && x <= 6.5 && z >= -7.1 && z <= 0.7) {
+        return 3.24;
+      }
+      // 4. Escaleras de piedra de la playa (y=0) a la terraza media (y=1.65)
+      if (x >= 4.2 && x <= 6.6 && z >= 0.0 && z <= 4.5) {
+        const t = THREE.MathUtils.clamp((4.5 - z) / 4.5, 0, 1);
+        return THREE.MathUtils.lerp(0.0, 1.65, t);
+      }
+      // 5. Terraza Central Media (y = 1.65)
+      if (x >= -6.0 && x <= 4.4 && z >= -3.9 && z <= 4.3) {
+        return 1.65;
+      }
+      // 6. Muelle de madera (y = 0.14)
+      if (x >= 1.15 && x <= 3.25 && z >= 8.1 && z <= 11.2) {
+        return 0.14;
+      }
+      // 7. Playa (y = 0)
+      if (x >= -7.0 && x <= 10.0 && z >= -6.0 && z <= 9.0) {
+        return 0.0;
+      }
+      return -0.35; // Agua
+    }
+
+    // --- CONTROLES Y ESTADO DEL JUGADOR (CON ROTACION 360 AL CAMINAR, GIRO E Y RODAR) ---
+    const keys = {};
+    const player = {
+      vx: 0,
+      vz: 0,
+      vy: 0,
+      onGround: true,
+      speed: 6.2,
+      stamina: 100,
+      rollTimer: 0,
+      rollDir: new THREE.Vector3(),
+      attackTimer: 0,
+      spinTimer: 0,
+      comboStep: 0,
+      squashY: 1.0,
+      squashXZ: 1.0,
+      stemVelX: 0,
+      stemVelZ: 0,
+      stepDustCooldown: 0
+    };
+
+    function toggleStudioMode() {
+      studioMode = !studioMode;
+      const btnStudio = document.getElementById('btn-studio');
+      const refOverlay = document.getElementById('ref-overlay');
+      btnStudio.classList.toggle('studio-active', studioMode);
+
+      if (studioMode) {
+        activeCamera = studioCamera;
+        worldGroup.visible = false;
+        water.visible = false;
+        deepWater.visible = false;
+        shallowReef.visible = false;
+        foamLines.forEach(f => f.mesh.visible = false);
+        studioBackdropGroup.visible = true;
+        refOverlay.style.display = 'block';
+        scene.background.setHex(0x520b7e);
+        scene.fog = null;
+
+        character.root.position.set(0, 0, 0);
+        character.root.rotation.y = 0.34;
+        character.bodyPivot.rotation.set(0, 0, 0);
+        character.bodyPivot.position.set(0, 0, 0);
+        character.bodyPivot.scale.set(1, 1, 1);
+        character.leftLeg.rotation.set(0, 0, 0);
+        character.rightLeg.rotation.set(0, 0, 0);
+        character.leftArm.rotation.set(0, 0, 0);
+        character.rightArm.rotation.set(0, 0, 0);
+        character.stemPivot.rotation.set(0, 0, 0);
+
+        studioCamera.position.set(-0.04, 2.25, 9.45);
+        studioCamera.lookAt(-0.04, 2.18, 0);
+      } else {
+        activeCamera = isoCamera;
+        worldGroup.visible = true;
+        water.visible = true;
+        deepWater.visible = true;
+        shallowReef.visible = true;
+        foamLines.forEach(f => f.mesh.visible = true);
+        studioBackdropGroup.visible = false;
+        refOverlay.style.display = 'none';
+        scene.background.setHex(0x1668c4);
+        scene.fog = new THREE.FogExp2(0x1b74d0, 0.008);
+        character.root.position.set(-0.5, 1.65, 1.2);
+        character.root.rotation.y = 0.34;
+      }
+    }
+
+    function respawnAll() {
+      spawnBushes();
+      spawnGoldCubes();
+    }
+
+    function triggerJump() {
+      if (player.onGround && player.rollTimer <= 0 && !studioMode) {
+        player.vy = 9.5;
+        player.onGround = false;
+        player.squashY = 1.18;
+        player.squashXZ = 0.88;
+        spawnDust(character.root.position.x, character.root.position.y, character.root.position.z, 7);
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      keys[k] = true;
+
+      if (k === 'c') {
+        toggleStudioMode();
+        return;
+      }
+
+      if (e.code === 'Space') {
+        triggerJump();
+      }
+      if ((e.key === 'Shift' || k === 'k') && player.rollTimer <= 0 && player.stamina >= 25 && !studioMode) {
+        triggerRoll();
+      }
+      if (k === 'j') {
+        triggerAttack();
+      }
+      if (k === 'e' && player.spinTimer <= 0 && player.stamina >= 30 && !studioMode) {
+        triggerSpinSpecial();
+      }
+      if (k === 'r') {
+        respawnAll();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button') || e.target.closest('#joystick-zone') || e.target.closest('#action-pad')) return;
+      if (e.button === 0 && !window.matchMedia('(pointer: coarse)').matches) {
+        triggerAttack();
+      }
+    });
+
+    window.addEventListener('wheel', (e) => {
+      zoomScale = THREE.MathUtils.clamp(zoomScale + e.deltaY * 0.008, 5.5, 16);
+      updateCameraProjection();
+    });
+
+    document.getElementById('btn-studio').addEventListener('click', toggleStudioMode);
+    document.getElementById('btn-respawn').addEventListener('click', respawnAll);
+
+    // --- JOYSTICK ANALOGICO TACTIL MULTITOUCH Y BOTONES DE ACCION PARA CELULAR ---
+    const joystickZone = document.getElementById('joystick-zone');
+    const joystickBase = document.getElementById('joystick-base');
+    const joystickStick = document.getElementById('joystick-stick');
+    const joystickInput = { x: 0, y: 0, active: false, pointerId: null };
+
+    function updateJoystickFromPoint(clientX, clientY) {
+      const rect = joystickBase.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const maxRadius = rect.width * 0.36;
+
+      const dx = clientX - centerX;
+      const dy = clientY - centerY;
+      const dist = Math.hypot(dx, dy);
+      const clampedDist = Math.min(dist, maxRadius);
+      const angle = Math.atan2(dy, dx);
+
+      const offsetX = Math.cos(angle) * clampedDist;
+      const offsetY = Math.sin(angle) * clampedDist;
+      joystickStick.style.transform = `translate(${offsetX.toFixed(1)}px, ${offsetY.toFixed(1)}px)`;
+
+      const norm = maxRadius > 0 ? clampedDist / maxRadius : 0;
+      if (norm < 0.08) {
+        joystickInput.x = 0;
+        joystickInput.y = 0;
+      } else {
+        joystickInput.x = Math.cos(angle) * norm;
+        joystickInput.y = Math.sin(angle) * norm;
+      }
+    }
+
+    function resetJoystick() {
+      joystickInput.active = false;
+      joystickInput.pointerId = null;
+      joystickInput.x = 0;
+      joystickInput.y = 0;
+      joystickStick.classList.remove('dragging');
+      joystickStick.style.transform = 'translate(0px, 0px)';
+    }
+
+    joystickZone.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      joystickInput.active = true;
+      joystickInput.pointerId = e.pointerId;
+      joystickStick.classList.add('dragging');
+      if (joystickZone.setPointerCapture) {
+        try { joystickZone.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+      updateJoystickFromPoint(e.clientX, e.clientY);
+    });
+
+    joystickZone.addEventListener('pointermove', (e) => {
+      if (!joystickInput.active || e.pointerId !== joystickInput.pointerId) return;
+      e.preventDefault();
+      updateJoystickFromPoint(e.clientX, e.clientY);
+    });
+
+    joystickZone.addEventListener('pointerup', (e) => {
+      if (e.pointerId !== joystickInput.pointerId) return;
+      e.preventDefault();
+      resetJoystick();
+    });
+
+    joystickZone.addEventListener('pointercancel', (e) => {
+      if (e.pointerId !== joystickInput.pointerId) return;
+      resetJoystick();
+    });
+
+    function bindTouchButton(id, callback) {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.classList.add('pressed');
+        callback();
+      });
+      const clearPress = () => btn.classList.remove('pressed');
+      btn.addEventListener('pointerup', clearPress);
+      btn.addEventListener('pointercancel', clearPress);
+      btn.addEventListener('pointerleave', clearPress);
+    }
+
+    bindTouchButton('btn-touch-attack', () => {
+      if (!studioMode) triggerAttack();
+    });
+    bindTouchButton('btn-touch-jump', () => {
+      triggerJump();
+    });
+    bindTouchButton('btn-touch-spin', () => {
+      if (player.spinTimer <= 0 && player.stamina >= 30 && !studioMode) {
+        triggerSpinSpecial();
+      }
+    });
+    bindTouchButton('btn-touch-roll', () => {
+      if (player.rollTimer <= 0 && player.stamina >= 25 && !studioMode) {
+        triggerRoll();
+      }
+    });
+
+    // Soporte de pellizco (pinch-to-zoom) en pantalla tactil
+    let pinchStartDist = 0;
+    let pinchStartZoom = zoomScale;
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchStartDist = Math.hypot(dx, dy);
+        pinchStartZoom = zoomScale;
+      }
+    }, { passive: true });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && pinchStartDist > 10) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        const scaleRatio = pinchStartDist / Math.max(20, dist);
+        zoomScale = THREE.MathUtils.clamp(pinchStartZoom * scaleRatio, 5.5, 16);
+        updateCameraProjection();
+      }
+    }, { passive: true });
+
+    function triggerRoll() {
+      player.stamina = Math.max(0, player.stamina - 25);
+      player.rollTimer = 0.36;
+      const moveVec = getInputVector();
+      if (moveVec.lengthSq() > 0.01) {
+        player.rollDir.copy(moveVec);
+      } else {
+        player.rollDir.set(Math.sin(character.root.rotation.y), 0, Math.cos(character.root.rotation.y));
+      }
+      spawnDust(character.root.position.x, character.root.position.y, character.root.position.z, 8);
+    }
+
+    function triggerAttack() {
+      if (player.attackTimer > 0.12) return;
+      player.attackTimer = 0.28;
+      player.comboStep = (player.comboStep + 1) % 2;
+      character.slashMat.opacity = 0.9;
+      character.slashMesh.rotation.z = player.comboStep === 0 ? 0 : Math.PI;
+      checkAttackHits(2.25);
+    }
+
+    function triggerSpinSpecial() {
+      player.stamina = Math.max(0, player.stamina - 30);
+      player.spinTimer = 0.52;
+      character.slashMat.opacity = 0.95;
+      spawnLeafBurst(character.root.position.x, character.root.position.y, character.root.position.z, 18);
+      checkAttackHits(3.1);
+    }
+
+    function checkAttackHits(radius) {
+      const px = character.root.position.x;
+      const py = character.root.position.y;
+      const pz = character.root.position.z;
+
+      // Cortar arbustos cercanos
+      cuttableBushes.forEach((b) => {
+        if (!b.alive) return;
+        const dist = Math.hypot(b.x - px, b.z - pz);
+        if (dist <= radius && Math.abs(b.y - py) < 1.5) {
+          b.alive = false;
+          b.mesh.visible = false;
+          spawnLeafBurst(b.x, b.y, b.z, 14);
+        }
+      });
+
+      // Romper los cuadraditos dorados cercanos
+      breakableCubes.forEach((c) => {
+        if (!c.alive) return;
+        const dist = Math.hypot(c.x - px, c.z - pz);
+        if (dist <= radius + 0.35 && Math.abs(c.y - (py + 0.5)) < 2.2) {
+          c.alive = false;
+          c.mesh.visible = false;
+          spawnCubeShatter(c.x, c.mesh.position.y, c.z, 22);
+        }
+      });
+    }
+
+    function getInputVector() {
+      let ix = 0;
+      let iz = 0;
+      if (keys['w'] || keys['arrowup']) iz -= 1;
+      if (keys['s'] || keys['arrowdown']) iz += 1;
+      if (keys['a'] || keys['arrowleft']) ix -= 1;
+      if (keys['d'] || keys['arrowright']) ix += 1;
+
+      // Combinar entrada de teclado con el joystick analogico tactil
+      let mag = 1.0;
+      if (joystickInput.active && (Math.abs(joystickInput.x) > 0.01 || Math.abs(joystickInput.y) > 0.01)) {
+        ix = joystickInput.x;
+        iz = joystickInput.y;
+        mag = THREE.MathUtils.clamp(Math.hypot(ix, iz), 0, 1);
+      }
+
+      const v = new THREE.Vector3();
+      if (ix !== 0 || iz !== 0) {
+        const angle = -Math.PI / 4;
+        v.x = ix * Math.cos(angle) - iz * Math.sin(angle);
+        v.z = ix * Math.sin(angle) + iz * Math.cos(angle);
+        v.normalize().multiplyScalar(mag);
+      }
+      return v;
+    }
+
+    function normalizeAngle(a) {
+      while (a > Math.PI) a -= Math.PI * 2;
+      while (a < -Math.PI) a += Math.PI * 2;
+      return a;
+    }
+
+    // --- LOOP PRINCIPAL DE ANIMACION Y FISICAS ---
+    const clock = new THREE.Clock();
+    const stBar = document.getElementById('st-bar');
+    const waterPosAttr = waterGeo.attributes.position;
+    let walkTime = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const elapsed = clock.getElapsedTime();
+
+      player.stamina = Math.min(100, player.stamina + dt * 22);
+      stBar.style.width = `${player.stamina}%`;
+
+      const moveDir = getInputVector();
+      const pos = character.root.position;
+      let targetSpeed = player.speed;
+
+      if (player.rollTimer > 0) {
+        player.rollTimer -= dt;
+        targetSpeed = 11.4;
+        moveDir.copy(player.rollDir);
+        if (player.rollTimer <= 0) {
+          character.bodyPivot.rotation.x = 0;
+        }
+      }
+
+      const desiredVx = moveDir.x * targetSpeed;
+      const desiredVz = moveDir.z * targetSpeed;
+      const accelRate = moveDir.lengthSq() > 0.001 ? 14.0 : 11.5;
+      player.vx = THREE.MathUtils.lerp(player.vx, desiredVx, Math.min(1, dt * accelRate));
+      player.vz = THREE.MathUtils.lerp(player.vz, desiredVz, Math.min(1, dt * accelRate));
+
+      const horizontalSpeed = Math.hypot(player.vx, player.vz);
+      const speedRatio = THREE.MathUtils.clamp(horizontalSpeed / player.speed, 0, 1.45);
+
+      let turnDelta = 0;
+      if (horizontalSpeed > 0.08) {
+        const nextX = pos.x + player.vx * dt;
+        const nextZ = pos.z + player.vz * dt;
+
+        const targetGround = getGroundHeight(nextX, nextZ);
+        const maxStepHeight = player.onGround ? 0.65 : 1.85;
+
+        if (targetGround >= -0.05 && targetGround - pos.y <= maxStepHeight) {
+          pos.x = nextX;
+          pos.z = nextZ;
+        } else {
+          player.vx *= 0.3;
+          player.vz *= 0.3;
+        }
+
+        // Rotacion natural hacia la direccion de movimiento (al presionar W se ve de espaldas subiendo)
+        const targetAngle = Math.atan2(player.vx, player.vz);
+        const diff = normalizeAngle(targetAngle - character.root.rotation.y);
+        turnDelta = diff;
+        character.root.rotation.y = normalizeAngle(character.root.rotation.y + diff * Math.min(1, dt * 15));
+
+        walkTime += dt * (9.5 + speedRatio * 4.5);
+
+        player.stepDustCooldown -= dt;
+        if (player.onGround && speedRatio > 0.55 && player.stepDustCooldown <= 0) {
+          spawnDust(pos.x, pos.y, pos.z, 2);
+          player.stepDustCooldown = 0.24;
+        }
+      }
+
+      // Gravedad y piso
+      const groundY = Math.max(0, getGroundHeight(pos.x, pos.z));
+      player.vy -= 24.0 * dt;
+      pos.y += player.vy * dt;
+
+      if (pos.y <= groundY) {
+        if (!player.onGround && player.vy < -2.5) {
+          spawnDust(pos.x, groundY, pos.z, 6);
+          const impact = THREE.MathUtils.clamp(-player.vy / 12.0, 0.1, 0.24);
+          player.squashY = 1.0 - impact;
+          player.squashXZ = 1.0 + impact * 0.65;
+        }
+        pos.y = groundY;
+        player.vy = 0;
+        player.onGround = true;
+      } else {
+        player.onGround = false;
+      }
+
+      player.squashY = THREE.MathUtils.lerp(player.squashY, 1.0, Math.min(1, dt * 13));
+      player.squashXZ = THREE.MathUtils.lerp(player.squashXZ, 1.0, Math.min(1, dt * 13));
+      character.bodyPivot.scale.set(player.squashXZ, player.squashY, player.squashXZ);
+
+      // --- ANIMACIONES PROCEDURALES FLUIDAS DEL PERSONAJE PLANTA ---
+      const isMoving = speedRatio > 0.06;
+
+      if (player.rollTimer > 0) {
+        const rollProgress = 1 - player.rollTimer / 0.36;
+        character.bodyPivot.rotation.x = rollProgress * Math.PI * 2;
+        character.bodyPivot.position.y = 0.25;
+      } else if (player.spinTimer > 0) {
+        player.spinTimer -= dt;
+        character.bodyPivot.rotation.y = normalizeAngle(character.bodyPivot.rotation.y + dt * 26);
+        character.rightArm.rotation.x = -Math.PI / 2;
+        character.slashMesh.rotation.z += dt * 25;
+        checkAttackHits(3.1);
+        if (player.spinTimer <= 0) {
+          character.bodyPivot.rotation.y = 0;
+        }
+      } else {
+        const targetPitch = isMoving ? 0.10 * Math.min(1, speedRatio) : 0;
+        const targetBank = THREE.MathUtils.clamp(-turnDelta * 0.20 * speedRatio, -0.16, 0.16);
+        const stepHipSway = isMoving && player.onGround ? Math.cos(walkTime) * 0.04 * speedRatio : 0;
+
+        character.bodyPivot.rotation.x = THREE.MathUtils.lerp(normalizeAngle(character.bodyPivot.rotation.x), targetPitch, dt * 12);
+        character.bodyPivot.rotation.z = THREE.MathUtils.lerp(character.bodyPivot.rotation.z, targetBank + stepHipSway, dt * 12);
+        character.bodyPivot.rotation.y = THREE.MathUtils.lerp(
+          normalizeAngle(character.bodyPivot.rotation.y),
+          isMoving ? Math.sin(walkTime) * 0.07 * speedRatio : 0,
+          dt * 12
+        );
+
+        if (isMoving && player.onGround) {
+          const stride = Math.sin(walkTime) * 0.66 * Math.min(1, speedRatio);
+          character.leftLeg.rotation.x = stride;
+          character.rightLeg.rotation.x = -stride;
+
+          character.leftArm.rotation.x = -stride * 0.70;
+          character.leftArm.rotation.z = -0.06 * Math.abs(stride);
+          if (player.attackTimer <= 0) {
+            character.rightArm.rotation.x = stride * 0.70;
+            character.rightArm.rotation.z = 0.06 * Math.abs(stride);
+          }
+          character.bodyPivot.position.y = Math.abs(Math.sin(walkTime)) * 0.12 * Math.min(1, speedRatio);
+        } else if (!player.onGround) {
+          const airBlend = THREE.MathUtils.clamp(player.vy * 0.08, -0.4, 0.4);
+          character.leftLeg.rotation.x = THREE.MathUtils.lerp(character.leftLeg.rotation.x, -0.38 + airBlend * 0.2, dt * 12);
+          character.rightLeg.rotation.x = THREE.MathUtils.lerp(character.rightLeg.rotation.x, 0.28 - airBlend * 0.2, dt * 12);
+          character.leftArm.rotation.z = THREE.MathUtils.lerp(character.leftArm.rotation.z, -0.36, dt * 10);
+          character.rightArm.rotation.z = THREE.MathUtils.lerp(character.rightArm.rotation.z, 0.36, dt * 10);
+          character.bodyPivot.position.y = THREE.MathUtils.lerp(character.bodyPivot.position.y, 0, dt * 10);
+        } else {
+          character.leftLeg.rotation.x = THREE.MathUtils.lerp(character.leftLeg.rotation.x, 0, dt * 12);
+          character.rightLeg.rotation.x = THREE.MathUtils.lerp(character.rightLeg.rotation.x, 0, dt * 12);
+          character.leftArm.rotation.x = THREE.MathUtils.lerp(character.leftArm.rotation.x, Math.sin(elapsed * 2.8) * 0.03, dt * 10);
+          character.leftArm.rotation.z = THREE.MathUtils.lerp(character.leftArm.rotation.z, 0, dt * 10);
+          if (player.attackTimer <= 0) {
+            character.rightArm.rotation.x = THREE.MathUtils.lerp(character.rightArm.rotation.x, -Math.sin(elapsed * 2.8) * 0.03, dt * 10);
+            character.rightArm.rotation.z = THREE.MathUtils.lerp(character.rightArm.rotation.z, 0, dt * 10);
+          }
+          character.bodyPivot.position.y = Math.sin(elapsed * 3.0) * 0.028;
+        }
+      }
+
+      // Ataque con golpe/corte
+      if (player.attackTimer > 0) {
+        player.attackTimer -= dt;
+        const swing = Math.sin((1 - player.attackTimer / 0.28) * Math.PI);
+        character.rightArm.rotation.x = -1.35 * swing;
+        character.rightArm.rotation.y = (player.comboStep === 0 ? -0.9 : 0.9) * swing;
+        character.slashMat.opacity = Math.max(0, player.attackTimer / 0.28);
+      } else if (player.spinTimer <= 0) {
+        character.rightArm.rotation.y = THREE.MathUtils.lerp(character.rightArm.rotation.y, 0, dt * 10);
+        character.slashMat.opacity = 0;
+      }
+
+      // Fisica de resorte (Spring) en el tallo superior
+      const targetStemX = (isMoving ? -0.20 * speedRatio : Math.sin(elapsed * 2.4) * 0.05) - THREE.MathUtils.clamp(player.vy * 0.025, -0.22, 0.22);
+      const targetStemZ = (isMoving ? Math.cos(walkTime) * 0.14 * speedRatio : Math.cos(elapsed * 2.0) * 0.035) + THREE.MathUtils.clamp(turnDelta * 0.18, -0.25, 0.25);
+      const springK = 140.0;
+      const damping = 11.5;
+      const forceX = (targetStemX - character.stemPivot.rotation.x) * springK - player.stemVelX * damping;
+      const forceZ = (targetStemZ - character.stemPivot.rotation.z) * springK - player.stemVelZ * damping;
+      player.stemVelX += forceX * dt;
+      player.stemVelZ += forceZ * dt;
+      character.stemPivot.rotation.x += player.stemVelX * dt;
+      character.stemPivot.rotation.z += player.stemVelZ * dt;
+
+      // Sombra de contacto y luz solar siguiendo al personaje
+      const heightAboveGround = Math.max(0, pos.y - groundY);
+      const shadowScale = THREE.MathUtils.clamp(1.0 - heightAboveGround * 0.18, 0.42, 1.0);
+      contactShadowMesh.position.set(pos.x, studioMode ? 0.005 : groundY + 0.015, pos.z);
+      contactShadowMesh.scale.setScalar(shadowScale);
+      contactShadowMat.opacity = THREE.MathUtils.clamp(0.85 - heightAboveGround * 0.26, 0.18, 0.85);
+
+      sunLight.position.set(pos.x + sunOffset.x, pos.y + sunOffset.y, pos.z + sunOffset.z);
+      sunLight.target.position.copy(pos);
+      sunLight.target.updateMatrixWorld();
+
+      if (!studioMode) {
+        const desiredCamPos = pos.clone().add(isoOffset);
+        isoCamera.position.lerp(desiredCamPos, dt * 6);
+        isoCamera.lookAt(
+          isoCamera.position.x - isoOffset.x,
+          isoCamera.position.y - isoOffset.y + 1.4,
+          isoCamera.position.z - isoOffset.z
+        );
+      } else {
+        character.root.position.set(0, 0, 0);
+      }
+
+      // Animar olas suaves del mar, cuadraditos dorados, gema del santuario, pinos y luciernanas
+      for (let i = 0; i < waterPosAttr.count; i++) {
+        const wx = waterPosAttr.getX(i);
+        const wy = waterPosAttr.getY(i);
+        waterPosAttr.setZ(i, Math.sin(wx * 0.35 + elapsed * 1.8) * 0.04 + Math.cos(wy * 0.35 + elapsed * 1.5) * 0.04);
+      }
+      waterPosAttr.needsUpdate = true;
+
+      foamLines.forEach((f) => {
+        const wave = Math.sin(elapsed * 2.2 + f.phase) * 0.11;
+        if (f.w > f.d) {
+          f.mesh.position.z = f.baseZ + wave;
+        } else {
+          f.mesh.position.x = f.baseX + wave;
+        }
+        f.mesh.material.opacity = 0.62 + Math.sin(elapsed * 2.2 + f.phase) * 0.24;
+      });
+
+      breakableCubes.forEach((c) => {
+        if (!c.alive) return;
+        c.mesh.position.y = c.baseY + Math.sin(elapsed * 2.0 + c.phase) * 0.08;
+      });
+
+      obeliskGem.position.y = 3.15 + Math.sin(elapsed * 2.5) * 0.09;
+      obeliskGem.rotation.y = elapsed * 1.2;
+
+      swayingTrees.forEach((t) => {
+        t.pivot.rotation.z = Math.sin(elapsed * 1.4 + t.phase) * 0.025;
+        t.pivot.rotation.x = Math.cos(elapsed * 1.1 + t.phase) * 0.018;
+      });
+
+      fireflies.forEach((ff) => {
+        ff.mesh.position.x = ff.bx + Math.sin(elapsed * ff.speed + ff.phase) * 0.45;
+        ff.mesh.position.y = ff.by + Math.sin(elapsed * 1.6 + ff.phase) * 0.25;
+        ff.mesh.position.z = ff.bz + Math.cos(elapsed * ff.speed + ff.phase) * 0.45;
+        ff.mesh.material.opacity = 0.45 + 0.45 * Math.sin(elapsed * 3.2 + ff.phase);
+      });
+
+      // Actualizar particulas (polvo, hojas y fragmentos dorados de los cuadraditos)
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= dt;
+        if (p.life <= 0) {
+          scene.remove(p.mesh);
+          particles.splice(i, 1);
+          continue;
+        }
+        p.mesh.position.x += p.vx * dt;
+        p.mesh.position.y += p.vy * dt;
+        p.mesh.position.z += p.vz * dt;
+        if (p.type === 'leaf' || p.type === 'shard') {
+          p.vy -= 12.5 * dt;
+          p.mesh.rotation.x += dt * 7;
+          p.mesh.rotation.y += dt * 7;
+          if (p.type === 'shard') {
+            p.mesh.scale.setScalar(Math.max(0.01, p.life / p.maxLife));
+          }
+        } else {
+          p.mesh.scale.multiplyScalar(0.95);
+          p.mesh.material.opacity = p.life / p.maxLife;
+        }
+      }
+
+      renderer.render(scene, activeCamera);
+    }
+
+    function getViewportSize() {
+      const w = (window.visualViewport && window.visualViewport.width) || document.documentElement.clientWidth || window.innerWidth;
+      const h = (window.visualViewport && window.visualViewport.height) || document.documentElement.clientHeight || window.innerHeight;
+      return { w, h };
+    }
+
+    function updateCameraProjection() {
+      const { w, h } = getViewportSize();
+      const a = w / Math.max(1, h);
+      // En pantallas verticales de celular (aspect < 1), mantener el ancho horizontal completo de la isla
+      const effectiveZoom = a < 1 ? (zoomScale * 1.18) / Math.max(0.35, a) : zoomScale;
+
+      isoCamera.left = -effectiveZoom * a;
+      isoCamera.right = effectiveZoom * a;
+      isoCamera.top = effectiveZoom;
+      isoCamera.bottom = -effectiveZoom;
+      isoCamera.updateProjectionMatrix();
+
+      studioCamera.aspect = a;
+      studioCamera.fov = a < 1 ? 42 : 28;
+      studioCamera.updateProjectionMatrix();
+    }
+
+    function handleResize() {
+      const { w, h } = getViewportSize();
+      renderer.setSize(w, h);
+      updateCameraProjection();
+    }
+
+    window.addEventListener('resize', handleResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+    }
+
+    handleResize();
+    animate();
+  </script>
+</body>
+</html>

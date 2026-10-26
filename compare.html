@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Character Validation Studio</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a0b2e;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      width: 1200px;
+      height: 900px;
+      overflow: hidden;
+    }
+    .panel {
+      width: 600px;
+      height: 900px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-right: 2px solid rgba(255,255,255,0.2);
+    }
+    .panel img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+    }
+    .label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.65);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      z-index: 10;
+    }
+    #three-container {
+      width: 600px;
+      height: 900px;
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="label">REFERENCIA ORIGINAL</div>
+    <img src="ref_smile.png" alt="Referencia" />
+  </div>
+  <div id="three-container">
+    <div class="label">MODELO 3D THREE.JS (CALIBRADO EXACTO)</div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  
+  <script type="module">
+    import * as THREE from 'three';
+    import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+
+/**
+ * ITERACION 10 - Calibracion final y exacta a ref_smile.png:
+ * 1. Ojos con coordenadas planares directas (nx, ny) -> UV:
+ *    - Cero distorsion de SphereGeometry, pupila gigante negro-azabache ubicada en el lugar exacto,
+ *      con media luna blanca crema a la izquierda y reflejo vertical suave sobre la pupila!
+ *    - El globo ocular termina limpiamente detras de la bolsita inferior (sin desbordarse jamas por debajo).
+ * 2. Hojita lateral derecha con su silueta en "S" acostada: base redondeada que nace junto al tallo,
+ *    valle suave y punta derecha gruesa curvada hacia arriba.
+ * 3. Tallo central con doble costilla vertical de planta y brotes laterales redondeados.
+ * 4. Botas con luz difusa suave y puntera iluminada, sin reflejo lineal vertical en el tobillo.
+ */
+/**
+ * ITERACION 10 - Calibracion final y exacta a ref_smile.png:
+ * 1. Ojos con coordenadas planares directas (nx, ny) -> UV:
+ *    - Cero distorsion de SphereGeometry, pupila gigante negro-azabache ubicada en el lugar exacto,
+ *      con media luna blanca crema a la izquierda y reflejo vertical suave sobre la pupila!
+ *    - El globo ocular termina limpiamente detras de la bolsita inferior (sin desbordarse jamas por debajo).
+ * 2. Hojita lateral derecha con su silueta en "S" acostada: base redondeada que nace junto al tallo,
+ *    valle suave y punta derecha gruesa curvada hacia arriba.
+ * 3. Tallo central con doble costilla vertical de planta y brotes laterales redondeados.
+ * 4. Botas con luz difusa suave y puntera iluminada, sin reflejo lineal vertical en el tobillo.
+ */
+function createExactPotGeometry() {
+  const profileCurve = new THREE.CurvePath();
+
+  // Perfil (r, y) de la maceta naranja con borde superior redondeado y boca hundida con tierra real:
+  // Base en y = -0.695, hombro redondeado que sube hasta el labio en y = +0.715 (r = 0.56),
+  // y luego baja hacia adentro de la maceta formando el borde interior y la cama de tierra en y = +0.625!
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.0, -0.695),
+    new THREE.Vector2(0.45, -0.695),
+    new THREE.Vector2(0.745, -0.45),
+    new THREE.Vector2(0.770, -0.05)
+  ));
+
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.770, -0.05),
+    new THREE.Vector2(0.778, 0.15),
+    new THREE.Vector2(0.782, 0.35),
+    new THREE.Vector2(0.776, 0.51)
+  ));
+
+  // Hombro exterior y labio superior de la maceta (sube hasta y = 0.715 en r = 0.575)
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.776, 0.51),
+    new THREE.Vector2(0.768, 0.645),
+    new THREE.Vector2(0.685, 0.715),
+    new THREE.Vector2(0.575, 0.715)
+  ));
+
+  // Borde interior de la maceta (baja desde el labio r=0.575, y=0.715 hacia la cavidad interior r=0.485, y=0.620)
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.575, 0.715),
+    new THREE.Vector2(0.520, 0.715),
+    new THREE.Vector2(0.495, 0.665),
+    new THREE.Vector2(0.480, 0.618)
+  ));
+
+  // Fondo interior bajo la tierra (cierra en r=0, y=0.618)
+  profileCurve.add(new THREE.CubicBezierCurve(
+    new THREE.Vector2(0.480, 0.618),
+    new THREE.Vector2(0.320, 0.618),
+    new THREE.Vector2(0.160, 0.618),
+    new THREE.Vector2(0.0, 0.618)
+  ));
+
+  const rings = 170;
+  const segs = 200;
+  const profilePts = profileCurve.getSpacedPoints(rings);
+
+  const geo = new THREE.BufferGeometry();
+  const positions = [];
+  const colors = [];
+  const uvs = [];
+  const indices = [];
+
+  // Gradiente naranja mandarina calido y luminoso
+  const topOrange = new THREE.Color(0xf87112);
+  const midOrange = new THREE.Color(0xf46307);
+  const botOrange = new THREE.Color(0xe85605);
+  const bevelWarmOrange = new THREE.Color(0xc64102);
+  const cheekBlushOrange = new THREE.Color(0xdc4c04);
+  const cheekHighlightOrange = new THREE.Color(0xfb7d1b);
+  const cTmp = new THREE.Color();
+
+  // Posiciones exactas de las cuencas oculares (mas altas y anchas como en ref_smile.png)
+  const eyeSockets = [
+    { x: -0.172, y: 0.205, rx: 0.228, ry: 0.312 },
+    { x:  0.278, y: 0.195, rx: 0.194, ry: 0.305 }
+  ];
+
+  for (let i = 0; i <= rings; i++) {
+    const pt = profilePts[i];
+    const rBase = pt.x;
+    const yBase = pt.y;
+    const vCoord = i / rings;
+
+    for (let j = 0; j <= segs; j++) {
+      const uCoord = j / segs;
+      const theta = uCoord * Math.PI * 2;
+
+      const cos4 = Math.cos(4 * theta);
+      const squircle = 1.0 - 0.046 * cos4;
+
+      let x = Math.cos(theta) * rBase * squircle * 1.00;
+      let y = yBase;
+      let z = Math.sin(theta) * rBase * squircle * 0.96;
+
+      const hNorm = THREE.MathUtils.clamp((y + 0.695) / 1.44, 0, 1);
+      if (hNorm > 0.38) {
+        cTmp.lerpColors(midOrange, topOrange, (hNorm - 0.38) / 0.62);
+      } else {
+        cTmp.lerpColors(botOrange, midOrange, Math.pow(hNorm / 0.38, 0.68));
+      }
+
+      // Sombreado realista dentro del labio interior de la maceta (donde toca la tierra)
+      if (i > rings * 0.72 && rBase < 0.575) {
+        const innerDepth = THREE.MathUtils.clamp((0.575 - rBase) / 0.095, 0, 1);
+        cTmp.lerp(bevelWarmOrange, innerDepth * 0.75);
+      }
+
+      if (z > 0.22) {
+        for (let e = 0; e < 2; e++) {
+          const es = eyeSockets[e];
+          const dx = (x - es.x) / es.rx;
+          const dy = (y - es.y) / es.ry;
+
+          // Forma del contorno del ojo: arco alto arriba y corte recto/curvo abajo en dy = -0.78
+          const yShape = dy < 0 ? dy * 1.28 : dy * 0.96;
+          const d = Math.hypot(dx, yShape);
+
+          // 1. Hundimiento de la cuenca: solo por encima de la bolsita inferior (dy > -0.82)
+          // para que la bolsita nunca se hunda ni deje salir el ojo por debajo!
+          if (d < 0.98 && dy > -0.84) {
+            const bottomFade = THREE.MathUtils.smoothstep(dy, -0.84, -0.62);
+            const depthFactor = (1.0 - THREE.MathUtils.smoothstep(d, 0.78, 0.96)) * bottomFade;
+            z -= depthFactor * 0.068;
+
+            // Bisel naranja calido en el borde superior e izquierdo del ojo
+            if (dy > -0.45) {
+              const rimRing = Math.exp(-Math.pow((d - 0.91) / 0.060, 2));
+              const rimDirBias = THREE.MathUtils.clamp(0.68 - 0.45 * dx + 0.42 * dy, 0.05, 1.0);
+              cTmp.lerp(bevelWarmOrange, rimRing * rimDirBias * 0.68);
+            }
+          }
+
+          // 2. Parpado inferior / bolsita integrada suave y adelantada que cubre limpiamente la base del ojo
+          const lidDx = dx / 0.84;
+          const lidDy = (dy + 0.80) / 0.16;
+          const lidDist = Math.hypot(lidDx, lidDy);
+          if (lidDist < 1.0) {
+            const w = Math.cos(lidDist * Math.PI * 0.5);
+            z += Math.pow(w, 1.35) * 0.044;
+            if (lidDy > -0.25) {
+              cTmp.lerp(cheekHighlightOrange, Math.pow(w, 1.4) * 0.34);
+            } else {
+              cTmp.lerp(cheekBlushOrange, Math.pow(w, 1.4) * 0.14);
+            }
+          }
+
+          // 3. Sombra calida muy sutil justo bajo la bolsita (dy ~ -0.96)
+          const creaseDx = dx / 0.52;
+          const creaseDy = (dy + 0.96) / 0.07;
+          const creaseDist = Math.hypot(creaseDx, creaseDy);
+          if (creaseDist < 1.0) {
+            const cw = Math.pow(Math.cos(creaseDist * Math.PI * 0.5), 1.6);
+            cTmp.lerp(cheekBlushOrange, cw * 0.16);
+          }
+        }
+      }
+
+      positions.push(x, y, z);
+      colors.push(cTmp.r, cTmp.g, cTmp.b);
+      uvs.push(uCoord, vCoord);
+    }
+  }
+
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < segs; j++) {
+      const a = i * (segs + 1) + j;
+      const b = (i + 1) * (segs + 1) + j;
+      const c = (i + 1) * (segs + 1) + (j + 1);
+      const d = i * (segs + 1) + (j + 1);
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Crea el monticulo 3D de tierra organica (sustrato rico de maceta con relieve de terrones y piedritas)
+ * que llena la abertura superior de la maceta y del cual brota el tallo central.
+ */
+function createPottingSoilGroup() {
+  const soilGroup = new THREE.Group();
+
+  // Textura procedural de tierra oscura con granos organicos, humus y perlita/piedritas
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Gradiente radial (mas humedo y oscuro en el centro junto al tallo y en el borde de oclusion con la maceta)
+  const bgGrad = ctx.createRadialGradient(256, 256, 18, 256, 256, 256);
+  bgGrad.addColorStop(0.0, '#27150b');
+  bgGrad.addColorStop(0.25, '#3b2213');
+  bgGrad.addColorStop(0.72, '#4a2c18');
+  bgGrad.addColorStop(0.92, '#351d0f');
+  bgGrad.addColorStop(1.0, '#221208');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Semilla determinista para granos de tierra
+  let seed = 1337;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+
+  // Terrones oscuros y medios
+  for (let i = 0; i < 900; i++) {
+    const x = rand() * 512;
+    const y = rand() * 512;
+    const r = 2 + rand() * 8;
+    const shade = rand();
+    if (shade < 0.45) {
+      ctx.fillStyle = 'rgba(30, 16, 8, 0.55)';
+    } else if (shade < 0.88) {
+      ctx.fillStyle = 'rgba(92, 56, 32, 0.42)';
+    } else {
+      ctx.fillStyle = 'rgba(130, 84, 48, 0.38)';
+    }
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const soilTex = new THREE.CanvasTexture(canvas);
+  soilTex.colorSpace = THREE.SRGBColorSpace;
+
+  const soilMat = new THREE.MeshStandardMaterial({
+    map: soilTex,
+    roughness: 0.92,
+    metalness: 0.02,
+    bumpMap: soilTex,
+    bumpScale: 0.025
+  });
+
+  // Geometria del domo de tierra con forma squircle que encaja exacto dentro del labio de la maceta (r = 0.525)
+  const rings = 36;
+  const segs = 72;
+  const geo = new THREE.BufferGeometry();
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+
+  for (let i = 0; i <= rings; i++) {
+    const t = i / rings; // 0 = centro (junto al tallo), 1 = borde interior de la maceta
+    const r = t * 0.518;
+
+    for (let j = 0; j <= segs; j++) {
+      const u = j / segs;
+      const theta = u * Math.PI * 2;
+      const cos4 = Math.cos(4 * theta);
+      const squircle = 1.0 - 0.046 * cos4;
+
+      const x = Math.cos(theta) * r * squircle * 1.00;
+      const z = Math.sin(theta) * r * squircle * 0.96;
+
+      // Relieve organico de terrones de tierra + monticulo central donde nace el tallo
+      const lump1 = Math.sin(x * 18.0 + z * 14.0) * Math.cos(z * 16.0 - x * 12.0) * 0.012 * (1 - t * 0.4);
+      const lump2 = Math.cos(theta * 7.0 + t * 9.0) * 0.008 * Math.sin(t * Math.PI);
+      const centerMound = Math.exp(-t * t * 14.0) * 0.038;
+      const dome = Math.cos(t * Math.PI * 0.5) * 0.055;
+
+      const y = 0.642 + dome + centerMound + lump1 + lump2;
+
+      positions.push(x, y, z);
+      uvs.push(0.5 + (x / 1.05), 0.5 + (z / 1.05));
+    }
+  }
+
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < segs; j++) {
+      const a = i * (segs + 1) + j;
+      const b = (i + 1) * (segs + 1) + j;
+      const c = (i + 1) * (segs + 1) + (j + 1);
+      const d = i * (segs + 1) + (j + 1);
+      indices.push(a, d, b);
+      indices.push(b, d, c);
+    }
+  }
+
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+
+  const soilMesh = new THREE.Mesh(geo, soilMat);
+  soilMesh.receiveShadow = true;
+  soilMesh.castShadow = false;
+  soilGroup.add(soilMesh);
+
+  // Terrones 3D individuales y piedritas organicas repartidos sobre la tierra alrededor del tallo
+  const clodDarkMat = new THREE.MeshStandardMaterial({ color: 0x361e10, roughness: 0.95, flatShading: true });
+  const clodMidMat = new THREE.MeshStandardMaterial({ color: 0x4e2e1a, roughness: 0.92, flatShading: true });
+  const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x9c826b, roughness: 0.80, flatShading: true });
+
+  const clodCoords = [
+    [0.08, 0.692, 0.05, 0.048, clodDarkMat],
+    [-0.09, 0.690, 0.06, 0.052, clodMidMat],
+    [0.02, 0.694, -0.09, 0.046, clodDarkMat],
+    [-0.18, 0.682, -0.14, 0.055, clodMidMat],
+    [0.22, 0.678, -0.16, 0.050, clodDarkMat],
+    [-0.25, 0.675, 0.15, 0.048, clodDarkMat],
+    [0.16, 0.684, 0.22, 0.045, clodMidMat],
+    [-0.05, 0.685, 0.26, 0.042, clodDarkMat],
+    [-0.31, 0.668, -0.02, 0.046, clodMidMat],
+    [0.30, 0.666, 0.04, 0.044, clodDarkMat],
+    [-0.14, 0.686, 0.16, 0.026, pebbleMat],
+    [0.14, 0.685, -0.07, 0.024, pebbleMat],
+    [-0.22, 0.676, -0.22, 0.028, pebbleMat]
+  ];
+
+  clodCoords.forEach(([cx, cy, cz, radius, mat], idx) => {
+    const clodGeo = new THREE.DodecahedronGeometry(radius, 1);
+    const clod = new THREE.Mesh(clodGeo, mat);
+    clod.position.set(cx, cy, cz);
+    clod.scale.set(1.25, 0.58, 1.15);
+    clod.rotation.set(idx * 0.7, idx * 1.3, idx * 0.4);
+    clod.castShadow = true;
+    clod.receiveShadow = true;
+    soilGroup.add(clod);
+  });
+
+  return soilGroup;
+}
+
+/**
+ * Crea una textura planar 1024x1024 para el ojo donde:
+ * - u = 0 es el borde izquierdo del ojo (media luna blanca crema)
+ * - u = 1 es el borde derecho del ojo (pupila negra pegada a la derecha)
+ * - v = 1 es el borde superior del ojo
+ * - v = 0 es el borde inferior del ojo
+ */
+function createPlanarEyeTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Esclerotica blanco-crema con sombreado suave en el borde izquierdo/superior (oclusion del bisel naranja)
+  const scleraGrad = ctx.createLinearGradient(80, 120, 760, 820);
+  scleraGrad.addColorStop(0.0, '#cdb9a6');
+  scleraGrad.addColorStop(0.18, '#efe6da');
+  scleraGrad.addColorStop(0.50, '#faf6f0');
+  scleraGrad.addColorStop(1.0, '#eee3d6');
+  ctx.fillStyle = scleraGrad;
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // 2. Pupila negra gigante desplazada a la derecha:
+  // En la referencia, la media luna blanca ocupa ~30% izquierdo (x = 0..310px de 1024)
+  // y la pupila negra ocupa desde x = 310 hasta x = 1024, y desde muy arriba (y = 35) hasta toda la base inferior!
+  ctx.save();
+  const pupilCx = 685;
+  const pupilCy = 520;
+  const pupilRx = 378;
+  const pupilRy = 495;
+
+  const pupilGrad = ctx.createRadialGradient(-25, 45, 20, 0, 0, pupilRy);
+  pupilGrad.addColorStop(0.0, '#180d07');
+  pupilGrad.addColorStop(0.68, '#080504');
+  pupilGrad.addColorStop(0.96, '#040304');
+  pupilGrad.addColorStop(1.0, '#cdb9a6');
+
+  ctx.translate(pupilCx, pupilCy);
+  ctx.scale(pupilRx / pupilRy, 1.0);
+  ctx.beginPath();
+  ctx.arc(0, 0, pupilRy, 0, Math.PI * 2);
+  ctx.fillStyle = pupilGrad;
+  ctx.fill();
+  ctx.restore();
+
+  // 3. Reflejo blanco vertical-curvo suave en el lado DERECHO de la pupila (x = 815, y = 475) como en ref_smile.png!
+  ctx.save();
+  ctx.translate(815, 475);
+  ctx.rotate(0.08);
+  ctx.scale(0.15, 1.18);
+  const hlGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 215);
+  hlGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.86)');
+  hlGrad.addColorStop(0.28, 'rgba(255, 255, 255, 0.45)');
+  hlGrad.addColorStop(0.62, 'rgba(255, 255, 255, 0.12)');
+  hlGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+  ctx.fillStyle = hlGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, 215, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 4. Segundo reflejo vertical muy tenue en el lado izquierdo de la pupila (x = 415, y = 490)
+  ctx.save();
+  ctx.translate(415, 490);
+  ctx.scale(0.14, 1.10);
+  const hlGrad2 = ctx.createRadialGradient(0, 0, 4, 0, 0, 165);
+  hlGrad2.addColorStop(0.0, 'rgba(255, 255, 255, 0.18)');
+  hlGrad2.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+  ctx.fillStyle = hlGrad2;
+  ctx.beginPath();
+  ctx.arc(0, 0, 165, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/**
+ * Crea una hoja/brote 3D con punta superior verdaderamente redondeada (tipo cuchara/oliva carnosa, cero picos!)
+ */
+function createPlumpPodLeafGeometry(width = 0.168, length = 0.62, thickness = 0.086, curveZ = 0.02, grooveDepth = 0.0) {
+  const geo = new THREE.SphereGeometry(1, 56, 40);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const t = (v.y + 1) * 0.5;
+    const baseTaper = 0.35 + 0.65 * Math.pow(t, 0.35);
+    const upperBelly = 1.0 + 0.18 * Math.sin(t * Math.PI);
+
+    const x = v.x * width * baseTaper * upperBelly;
+    const y = t * length;
+
+    const centerLine = Math.exp(-Math.pow(v.x / 0.22, 2)) * Math.sin(t * Math.PI);
+    const zMod = grooveDepth !== 0 ? -grooveDepth * centerLine : 0.008 * centerLine;
+    const z = v.z * thickness * baseTaper + Math.sin(t * Math.PI) * curveZ + (v.z > 0 ? zMod : 0);
+
+    pos.setXYZ(i, x, y, z);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Textura de hoja con colores verdes luminosos y nervadura central clara
+ */
+function createLeafTexture(veinStrength = 1.0, isSideLeaf = false) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  const grad = ctx.createLinearGradient(0, 512, 0, 0);
+  grad.addColorStop(0, '#339211');
+  grad.addColorStop(0.50, '#48b41a');
+  grad.addColorStop(1, '#60cf24');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  if (veinStrength > 0) {
+    const cx = Math.floor(512 * (isSideLeaf ? 0.72 : 0.75));
+    const veinGrad = ctx.createLinearGradient(cx - 14, 0, cx + 14, 0);
+    veinGrad.addColorStop(0, 'rgba(217, 249, 157, 0)');
+    veinGrad.addColorStop(0.35, `rgba(225, 252, 175, ${0.65 * veinStrength})`);
+    veinGrad.addColorStop(0.5, `rgba(250, 255, 240, ${0.95 * veinStrength})`);
+    veinGrad.addColorStop(0.65, `rgba(225, 252, 175, ${0.65 * veinStrength})`);
+    veinGrad.addColorStop(1, 'rgba(217, 249, 157, 0)');
+    ctx.fillStyle = veinGrad;
+    ctx.beginPath();
+    ctx.roundRect(cx - 10, 65, 20, 375, 10);
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Construye la hojita acostada sobre la parte superior derecha de la cabeza con la silueta en "S" exacta de ref_smile.png:
+ * - Lomo izquierdo redondeado que sube suavemente desde el tallo, baja ligeramente en un valle suave (t~0.42)
+ *   y vuelve a subir en una punta derecha redondeada y levantada!
+ */
+function createSideLeafGeometry() {
+  const geo = new THREE.SphereGeometry(1, 64, 48);
+  const pos = geo.attributes.position;
+
+  for (let i = 0; i < pos.count; i++) {
+    const vx = pos.getX(i);
+    const vy = pos.getY(i);
+    const vz = pos.getZ(i);
+
+    const t = (vy + 1) * 0.5; // 0 = base izquierda redonda, 1 = punta derecha redonda
+
+    // Silueta en S: abombada en t~0.18, ligero valle suave en t~0.46 y lomo amplio en t~0.80
+    const leftPillow = Math.exp(-Math.pow((t - 0.18) / 0.18, 2)) * 0.24;
+    const midDip = -Math.exp(-Math.pow((t - 0.45) / 0.16, 2)) * 0.14;
+    const rightSwell = Math.exp(-Math.pow((t - 0.78) / 0.22, 2)) * 0.22;
+    const radiusScale = 1.0 + leftPillow + midDip + rightSwell;
+
+    const cx = t * 0.50;
+    const cy =
+      Math.sin(t * Math.PI * 1.1) * 0.022 -
+      Math.exp(-Math.pow((t - 0.42) / 0.18, 2)) * 0.018 +
+      Math.pow(Math.max(0, (t - 0.28) / 0.72), 2.15) * 0.215;
+    const cz = Math.sin(t * Math.PI) * 0.024;
+
+    const dcy = 0.215 * 2.15 * Math.pow(Math.max(0, (t - 0.28) / 0.72), 1.15) / 0.72;
+    const angle = Math.atan2(dcy, 0.50) * 0.65;
+
+    const sideGroove = Math.exp(-Math.pow((vx + 0.08) / 0.28, 2)) * (vz > 0 ? -0.014 : 0) * Math.sin(t * Math.PI);
+
+    const localThick = -vx * 0.092 * radiusScale;
+    const localDepth = vz * 0.125 * radiusScale + sideGroove;
+
+    const finalX = cx - Math.sin(angle) * localThick;
+    const finalY = cy + Math.cos(angle) * localThick;
+    const finalZ = cz + localDepth;
+
+    pos.setXYZ(i, finalX, finalY, finalZ);
+  }
+
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Textura del brazo verde con las 2 rayas finas blanco-verdosas en la muneca y el pequeno ovalo '0'
+ */
+function createArmTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#338c19';
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.fillStyle = 'rgba(210, 238, 192, 0.85)';
+  ctx.fillRect(Math.floor(512 * 0.725), 0, 5, 512);
+  ctx.fillRect(Math.floor(512 * 0.755), 0, 5, 512);
+
+  ctx.strokeStyle = 'rgba(210, 238, 192, 0.88)';
+  ctx.lineWidth = 4.5;
+  for (let vFrac of [0.15, 0.38, 0.64, 0.88]) {
+    ctx.beginPath();
+    ctx.ellipse(Math.floor(512 * 0.825), Math.floor(512 * vFrac), 8, 14, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Textura de la bota verde con el brillo redondo suave en la puntera y las 2 lineas de costura laterales del empeine
+ */
+function createBootTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#368f1b';
+  ctx.fillRect(0, 0, 512, 512);
+
+  const frontX = Math.floor(512 * 0.25);
+
+  const toeGlow = ctx.createRadialGradient(frontX + 8, 384, 4, frontX + 8, 384, 46);
+  toeGlow.addColorStop(0, 'rgba(230, 252, 215, 0.52)');
+  toeGlow.addColorStop(0.5, 'rgba(170, 230, 145, 0.22)');
+  toeGlow.addColorStop(1, 'rgba(54, 143, 27, 0)');
+  ctx.fillStyle = toeGlow;
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = 'rgba(25, 76, 10, 0.48)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(frontX - 23, 55);
+  ctx.lineTo(frontX - 25, 270);
+  ctx.moveTo(frontX + 23, 55);
+  ctx.lineTo(frontX + 25, 270);
+  ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Construye el cuerpo de la bota/tenis verde como un solido cerrado convexo y suave
+ */
+function createSolidSneakerGeometry() {
+  const rings = 40;
+  const radial = 48;
+  const geo = new THREE.BufferGeometry();
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+
+  for (let i = 0; i <= rings; i++) {
+    const t = i / rings;
+    const y = THREE.MathUtils.lerp(-0.250, 0.045, t);
+
+    const vampCurve = Math.sin(Math.pow(1 - t, 1.45) * Math.PI * 0.5);
+    const bottomRound = t < 0.16 ? Math.pow(t / 0.16, 0.35) * 0.10 + 0.90 : 1.0;
+
+    const xRad = (0.158 + vampCurve * 0.015) * bottomRound;
+    const zBackRad = (0.158 + vampCurve * 0.008) * bottomRound;
+    const zFrontRad = (0.158 + vampCurve * 0.152) * bottomRound;
+
+    for (let j = 0; j <= radial; j++) {
+      const u = j / radial;
+      const a = u * Math.PI * 2;
+      const cosA = Math.cos(a);
+      const sinA = Math.sin(a);
+
+      const x = cosA * xRad;
+      const z = sinA >= 0 ? sinA * zFrontRad : sinA * zBackRad;
+
+      positions.push(x, y, z);
+      uvs.push(u, t);
+    }
+  }
+
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < radial; j++) {
+      const a = i * (radial + 1) + j;
+      const b = (i + 1) * (radial + 1) + j;
+      const c = (i + 1) * (radial + 1) + (j + 1);
+      const d = i * (radial + 1) + (j + 1);
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Construye la suela verde claro cerrada y redondeada
+ */
+function createSolidSoleGeometry() {
+  const rings = 14;
+  const radial = 48;
+  const geo = new THREE.BufferGeometry();
+  const positions = [];
+  const indices = [];
+
+  for (let i = 0; i <= rings; i++) {
+    const t = i / rings;
+    const y = THREE.MathUtils.lerp(-0.288, -0.246, t);
+    const pill = Math.sin(t * Math.PI) * 0.010;
+    const capScale = t === 0 ? 0.92 : 1.0;
+
+    for (let j = 0; j <= radial; j++) {
+      const a = (j / radial) * Math.PI * 2;
+      const cosA = Math.cos(a);
+      const sinA = Math.sin(a);
+
+      const x = cosA * (0.170 + pill) * capScale;
+      const z = (sinA >= 0 ? sinA * (0.310 + pill) : sinA * (0.166 + pill)) * capScale;
+
+      positions.push(x, y, z);
+    }
+  }
+
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < radial; j++) {
+      const a = i * (radial + 1) + j;
+      const b = (i + 1) * (radial + 1) + j;
+      const c = (i + 1) * (radial + 1) + (j + 1);
+      const d = i * (radial + 1) + (j + 1);
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  geo.setIndex(indices);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function createExactPlantCharacter(options = {}) {
+  const showWeapons = options.showWeapons ?? false;
+  const showTeeth = options.showTeeth ?? false;
+
+  const root = new THREE.Group();
+  const bodyPivot = new THREE.Group();
+  root.add(bodyPivot);
+
+  // --- MATERIALES PBR CALIBRADOS ---
+  const orangeBodyMat = new THREE.MeshPhysicalMaterial({
+    vertexColors: true,
+    roughness: 0.34,
+    metalness: 0.0,
+    clearcoat: 0.10,
+    clearcoatRoughness: 0.42,
+    sheen: 0.12,
+    sheenColor: new THREE.Color(0xff9e44),
+    sheenRoughness: 0.55
+  });
+
+  const unifiedEyeMat = new THREE.MeshPhysicalMaterial({
+    map: createPlanarEyeTexture(),
+    roughness: 0.15,
+    clearcoat: 0.65,
+    clearcoatRoughness: 0.12
+  });
+
+  const stemGreenMat = new THREE.MeshPhysicalMaterial({
+    color: 0x45ae18,
+    roughness: 0.28,
+    clearcoat: 0.18,
+    clearcoatRoughness: 0.32,
+    sheen: 0.25,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const sideLeafMat = new THREE.MeshPhysicalMaterial({
+    map: createLeafTexture(0.80, true),
+    roughness: 0.28,
+    clearcoat: 0.18,
+    sheen: 0.25,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const topLeafMat = new THREE.MeshPhysicalMaterial({
+    map: createLeafTexture(1.0, false),
+    roughness: 0.28,
+    clearcoat: 0.18,
+    sheen: 0.25,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const budLeafMat = new THREE.MeshPhysicalMaterial({
+    map: createLeafTexture(0.60, false),
+    roughness: 0.28,
+    clearcoat: 0.18,
+    sheen: 0.25,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const limbGreenMat = new THREE.MeshPhysicalMaterial({
+    color: 0x338c19,
+    roughness: 0.38,
+    clearcoat: 0.10,
+    clearcoatRoughness: 0.42,
+    sheen: 0.18,
+    sheenColor: new THREE.Color(0x86efac)
+  });
+
+  const armMatWithStripes = new THREE.MeshPhysicalMaterial({
+    map: createArmTexture(),
+    roughness: 0.38,
+    clearcoat: 0.10,
+    clearcoatRoughness: 0.42,
+    sheen: 0.18,
+    sheenColor: new THREE.Color(0x86efac)
+  });
+
+  const bootGreenMat = new THREE.MeshPhysicalMaterial({
+    map: createBootTexture(),
+    roughness: 0.56,
+    clearcoat: 0.0,
+    sheen: 0.18,
+    sheenColor: new THREE.Color(0xbef264)
+  });
+
+  const soleGreenMat = new THREE.MeshPhysicalMaterial({
+    color: 0x4ba82e,
+    roughness: 0.44,
+    clearcoat: 0.05
+  });
+
+  const whiteTrimMat = new THREE.MeshStandardMaterial({
+    color: 0xd8ebd0,
+    roughness: 0.35
+  });
+
+  const mouthDarkMat = new THREE.MeshStandardMaterial({
+    color: 0x380e04,
+    roughness: 0.40
+  });
+
+  // =========================================================
+  // 1. MACETA / CABEZA NARANJA CALIBRADA + TIERRA ORGANICA EN LA PARTE SUPERIOR
+  // =========================================================
+  const headGeo = createExactPotGeometry();
+  const headMesh = new THREE.Mesh(headGeo, orangeBodyMat);
+  headMesh.position.y = 1.90;
+  headMesh.castShadow = true;
+  headMesh.receiveShadow = true;
+  bodyPivot.add(headMesh);
+
+  // Tierra 3D dentro de la abertura superior de la maceta (visible desde camara isometrica)
+  const soilGroup = createPottingSoilGroup();
+  headMesh.add(soilGroup);
+
+  // =========================================================
+  // 2. OJOS UNIFICADOS CON UV PLANAR Y RECORTE INFERIOR DETRAS DE LA BOLSITA
+  // =========================================================
+  function createRecessedEye(side) {
+    const eyeGroup = new THREE.Group();
+    const ex = side === -1 ? -0.172 : 0.278;
+    const ey = side === -1 ? 0.205 : 0.195;
+    const ez = side === -1 ? 0.658 : 0.624;
+    eyeGroup.position.set(ex, ey, ez);
+    eyeGroup.rotation.y = side === -1 ? -0.07 : 0.28;
+
+    const rxScale = side === -1 ? 0.85 : 0.72;
+    const ryScale = side === -1 ? 1.16 : 1.14;
+
+    const eyeGeo = new THREE.SphereGeometry(0.282, 64, 64);
+    const ePos = eyeGeo.attributes.position;
+    const eUv = eyeGeo.attributes.uv;
+
+    for (let i = 0; i < ePos.count; i++) {
+      const origX = ePos.getX(i);
+      const origY = ePos.getY(i);
+      const origZ = ePos.getZ(i);
+
+      // Coordenadas normalizadas (-1 a +1) antes de escalar
+      const nx = origX / 0.282;
+      const ny = origY / 0.282;
+
+      // Mapeo UV planar directo sobre la cara frontal del globo ocular!
+      eUv.setXY(i, (nx + 1) * 0.5, (ny + 1) * 0.5);
+
+      const sx = origX * rxScale;
+      // Recortamos suavemente el polo inferior (ny < -0.74) para que nunca asome por debajo de la bolsita
+      const clampedY = Math.max(origY, -0.282 * 0.74);
+      const sy = clampedY * ryScale;
+      const sz = origZ * 0.40;
+      ePos.setXYZ(i, sx, sy, sz);
+    }
+    eUv.needsUpdate = true;
+    eyeGeo.computeVertexNormals();
+    const eyeMesh = new THREE.Mesh(eyeGeo, unifiedEyeMat);
+    eyeGroup.add(eyeMesh);
+
+    return eyeGroup;
+  }
+
+  headMesh.add(createRecessedEye(-1));
+  headMesh.add(createRecessedEye(1));
+
+  // =========================================================
+  // 3. BOCA: SONRISA FINA VISIBLE EN LA SUPERFICIE + VERSION DIENTES
+  // =========================================================
+  const smileGroup = new THREE.Group();
+  smileGroup.position.set(0.064, -0.196, 0.742);
+  smileGroup.rotation.y = 0.12;
+  smileGroup.rotation.z = -0.05;
+
+  const smileCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.104, 0.028, -0.008),
+    new THREE.Vector3(-0.032, -0.024, 0.012),
+    new THREE.Vector3(0.038, -0.025, 0.012),
+    new THREE.Vector3(0.098, 0.014, -0.008)
+  ]);
+  const smileGeo = new THREE.TubeGeometry(smileCurve, 32, 0.0075, 12, false);
+  const smileMesh = new THREE.Mesh(smileGeo, mouthDarkMat);
+  smileGroup.add(smileMesh);
+  headMesh.add(smileGroup);
+
+  const mouthTeethGroup = new THREE.Group();
+  mouthTeethGroup.position.set(0.064, -0.212, 0.725);
+  mouthTeethGroup.rotation.y = 0.12;
+  mouthTeethGroup.rotation.z = -0.05;
+  const mouthBgGeo = new RoundedBoxGeometry(0.30, 0.15, 0.06, 5, 0.06);
+  const mouthBg = new THREE.Mesh(mouthBgGeo, mouthDarkMat);
+  mouthTeethGroup.add(mouthBg);
+
+  const toothMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+  for (let i = -1.5; i <= 1.5; i += 1) {
+    const tTop = new THREE.Mesh(new RoundedBoxGeometry(0.052, 0.048, 0.04, 3, 0.016), toothMat);
+    tTop.position.set(i * 0.058, 0.040, 0.022);
+    mouthTeethGroup.add(tTop);
+
+    const tBot = new THREE.Mesh(new RoundedBoxGeometry(0.048, 0.044, 0.04, 3, 0.015), toothMat);
+    tBot.position.set(i * 0.056, -0.042, 0.022);
+    mouthTeethGroup.add(tBot);
+  }
+  mouthTeethGroup.visible = showTeeth;
+  smileGroup.visible = !showTeeth;
+  headMesh.add(mouthTeethGroup);
+
+  // =========================================================
+  // 4. HOJITA LATERAL CARNOSA CON SILUETA EN "S" Y PUNTA REDONDEADA
+  // =========================================================
+  const sideLeafGroup = new THREE.Group();
+  sideLeafGroup.position.set(0.16, 0.718, 0.12);
+  sideLeafGroup.rotation.y = -0.22;
+  sideLeafGroup.rotation.z = 0.04;
+
+  const sideLeafGeo = createSideLeafGeometry();
+  const sideLeafMesh = new THREE.Mesh(sideLeafGeo, sideLeafMat);
+  sideLeafMesh.castShadow = true;
+  sideLeafMesh.receiveShadow = true;
+  sideLeafGroup.add(sideLeafMesh);
+  headMesh.add(sideLeafGroup);
+
+  // =========================================================
+  // 5. TALLO CENTRAL CON SURCO CENTRAL (BROTANDO DE LA TIERRA) + 2 BROTES + HOJA SUPERIOR
+  // =========================================================
+  const stemPivot = new THREE.Group();
+  stemPivot.position.set(0.005, 0.685, 0.0);
+  headMesh.add(stemPivot);
+
+  const mainStemCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.0, 0.0, 0),
+    new THREE.Vector3(-0.004, 0.40, 0),
+    new THREE.Vector3(-0.022, 0.80, 0),
+    new THREE.Vector3(-0.072, 1.20, 0)
+  ]);
+
+  const stemSegments = 60;
+  const stemRadial = 28;
+  const stemGeo = new THREE.TubeGeometry(mainStemCurve, stemSegments, 0.048, stemRadial, false);
+  const stPos = stemGeo.attributes.position;
+  const centerPt = new THREE.Vector3();
+  const vertPt = new THREE.Vector3();
+
+  for (let i = 0; i <= stemSegments; i++) {
+    const t = i / stemSegments;
+    mainStemCurve.getPointAt(t, centerPt);
+    const baseFlare = Math.exp(-t * 8.5) * 0.62;
+    const midJunction = Math.exp(-Math.pow((t - 0.50) / 0.10, 2)) * 0.24;
+    const radiusScale = (1.0 - 0.36 * t) + baseFlare + midJunction;
+
+    for (let j = 0; j <= stemRadial; j++) {
+      const idx = i * (stemRadial + 1) + j;
+      vertPt.fromBufferAttribute(stPos, idx);
+      const offset = vertPt.clone().sub(centerPt);
+      const angle = Math.atan2(offset.z, offset.x);
+      // Surco vertical central en la cara frontal (+Z, angle = PI/2) como dos tallitos fusionados
+      const frontGroove = offset.z > 0 ? -0.18 * Math.exp(-Math.pow(offset.x / 0.018, 2)) : 0;
+      const rib = 1.0 + 0.06 * Math.cos(angle * 4) + frontGroove;
+      offset.multiplyScalar(radiusScale * rib);
+      stPos.setXYZ(idx, centerPt.x + offset.x, centerPt.y + offset.y, centerPt.z + offset.z);
+    }
+  }
+  stemGeo.computeVertexNormals();
+  const mainStemMesh = new THREE.Mesh(stemGeo, stemGreenMat);
+  mainStemMesh.castShadow = true;
+  stemPivot.add(mainStemMesh);
+
+  // Brote lateral izquierdo (alargado tipo oliva con surco central)
+  const leftShootGroup = new THREE.Group();
+  leftShootGroup.position.set(-0.012, 0.54, 0);
+  const leftShootCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(-0.046, 0.095, 0),
+    new THREE.Vector3(-0.122, 0.19, 0)
+  ]);
+  const leftShootStalk = new THREE.Mesh(new THREE.TubeGeometry(leftShootCurve, 16, 0.021, 12, false), stemGreenMat);
+  leftShootGroup.add(leftShootStalk);
+
+  const leftBudGeo = createPlumpPodLeafGeometry(0.054, 0.24, 0.054, 0.01, 0.015);
+  const leftBud = new THREE.Mesh(leftBudGeo, budLeafMat);
+  leftBud.position.set(-0.112, 0.175, 0);
+  leftBud.rotation.z = 0.86;
+  leftBud.castShadow = true;
+  leftShootGroup.add(leftBud);
+  stemPivot.add(leftShootGroup);
+
+  // Brote lateral derecho
+  const rightShootGroup = new THREE.Group();
+  rightShootGroup.position.set(-0.008, 0.58, 0);
+  const rightShootCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0.032, 0.105, 0),
+    new THREE.Vector3(0.058, 0.21, 0)
+  ]);
+  const rightShootStalk = new THREE.Mesh(new THREE.TubeGeometry(rightShootCurve, 16, 0.020, 12, false), stemGreenMat);
+  rightShootGroup.add(rightShootStalk);
+
+  const rightBudGeo = createPlumpPodLeafGeometry(0.052, 0.23, 0.052, 0.01, 0.014);
+  const rightBud = new THREE.Mesh(rightBudGeo, budLeafMat);
+  rightBud.position.set(0.054, 0.195, 0);
+  rightBud.rotation.z = -0.14;
+  rightBud.castShadow = true;
+  rightShootGroup.add(rightBud);
+  stemPivot.add(rightShootGroup);
+
+  // Hoja superior grande con punta redondeada
+  const topLeafPivot = new THREE.Group();
+  topLeafPivot.position.set(-0.068, 1.17, 0);
+  topLeafPivot.rotation.z = 0.42;
+  topLeafPivot.rotation.y = 0.08;
+
+  const topLeafGeo = createPlumpPodLeafGeometry(0.168, 0.62, 0.084, 0.020, 0.0);
+  const topLeafMesh = new THREE.Mesh(topLeafGeo, topLeafMat);
+  topLeafMesh.castShadow = true;
+  topLeafPivot.add(topLeafMesh);
+  stemPivot.add(topLeafPivot);
+
+  // =========================================================
+  // 6. BRAZOS EN JARRAS CALIBRADOS
+  // =========================================================
+  function createDetailedArm(side) {
+    const armPivot = new THREE.Group();
+    armPivot.position.set(
+      side === -1 ? -0.66 : 0.64,
+      side === -1 ? 1.56 : 1.46,
+      side === -1 ? 0.06 : -0.04
+    );
+
+    const armCurve = new THREE.CatmullRomCurve3(
+      side === -1
+        ? [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(-0.15, -0.07, -0.01),
+            new THREE.Vector3(-0.21, -0.24, 0.03),
+            new THREE.Vector3(-0.09, -0.40, 0.12),
+            new THREE.Vector3(0.02, -0.47, 0.18)
+          ]
+        : [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0.12, -0.07, -0.01),
+            new THREE.Vector3(0.16, -0.22, 0.04),
+            new THREE.Vector3(0.06, -0.36, 0.13),
+            new THREE.Vector3(-0.04, -0.42, 0.19)
+          ]
+    );
+
+    const armSegments = 48;
+    const armRadial = 24;
+    const armGeo = new THREE.TubeGeometry(armCurve, armSegments, 0.136, armRadial, false);
+
+    const aPos = armGeo.attributes.position;
+    const cPt = new THREE.Vector3();
+    const vPt = new THREE.Vector3();
+    for (let i = 0; i <= armSegments; i++) {
+      const t = i / armSegments;
+      armCurve.getPointAt(t, cPt);
+      let rScale;
+      if (t < 0.18) {
+        rScale = 0.85 + 0.15 * (t / 0.18);
+      } else if (t < 0.80) {
+        rScale = 1.0 + 0.13 * Math.sin(((t - 0.18) / 0.62) * Math.PI);
+      } else {
+        const u = (t - 0.80) / 0.20;
+        rScale = 1.0 * Math.cos(u * Math.PI * 0.32);
+      }
+
+      for (let j = 0; j <= armRadial; j++) {
+        const idx = i * (armRadial + 1) + j;
+        vPt.fromBufferAttribute(aPos, idx);
+        vPt.sub(cPt).multiplyScalar(rScale).add(cPt);
+        aPos.setXYZ(idx, vPt.x, vPt.y, vPt.z);
+      }
+    }
+    armGeo.computeVertexNormals();
+    const armMesh = new THREE.Mesh(armGeo, armMatWithStripes);
+    armMesh.castShadow = true;
+    armMesh.receiveShadow = true;
+    armPivot.add(armMesh);
+
+    const handPoint = armCurve.getPointAt(0.96);
+    const handGroup = new THREE.Group();
+    handGroup.position.copy(handPoint);
+
+    const palmCap = new THREE.Mesh(new THREE.SphereGeometry(0.114, 20, 20), limbGreenMat);
+    palmCap.scale.set(1.0, 0.86, 0.92);
+    handGroup.add(palmCap);
+
+    for (let f = 0; f < 4; f++) {
+      const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.034, 0.082, 8, 12), limbGreenMat);
+      finger.position.set(
+        side * (-0.060 + f * 0.025),
+        -0.052 - (3 - f) * 0.015,
+        0.042 - f * 0.016
+      );
+      finger.rotation.z = side * (0.48 + f * 0.08);
+      finger.rotation.x = 0.24;
+      finger.castShadow = true;
+      handGroup.add(finger);
+    }
+
+    armPivot.add(handGroup);
+    return { armPivot, handGroup };
+  }
+
+  const leftArmObj = createDetailedArm(-1);
+  const rightArmObj = createDetailedArm(1);
+  bodyPivot.add(leftArmObj.armPivot);
+  bodyPivot.add(rightArmObj.armPivot);
+
+  // Espada y escudo opcionales (para el modo juego)
+  const swordGroup = new THREE.Group();
+  swordGroup.position.set(0.05, -0.42, 0.30);
+  swordGroup.rotation.x = Math.PI / 2.2;
+  const hilt = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.035, 0.035, 0.24, 8),
+    new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.6 })
+  );
+  const guard = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.06, 0.09),
+    new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.5, roughness: 0.3 })
+  );
+  guard.position.y = 0.12;
+  const blade = new THREE.Mesh(
+    new THREE.ConeGeometry(0.095, 0.92, 4),
+    new THREE.MeshStandardMaterial({
+      color: 0xe2e8f0,
+      emissive: 0x38bdf8,
+      emissiveIntensity: 0.18,
+      metalness: 0.6,
+      roughness: 0.2,
+      flatShading: true
+    })
+  );
+  blade.position.y = 0.58;
+  blade.rotation.y = Math.PI / 4;
+  swordGroup.add(hilt, guard, blade);
+  swordGroup.visible = showWeapons;
+  rightArmObj.armPivot.add(swordGroup);
+
+  const shieldGroup = new THREE.Group();
+  shieldGroup.position.set(-0.08, -0.40, 0.26);
+  shieldGroup.rotation.y = -0.45;
+  const shieldMesh = new THREE.Mesh(
+    new RoundedBoxGeometry(0.36, 0.44, 0.06, 3, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+  );
+  const shieldRim = new THREE.Mesh(
+    new RoundedBoxGeometry(0.4, 0.48, 0.04, 3, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3 })
+  );
+  shieldRim.position.z = -0.01;
+  shieldGroup.add(shieldMesh, shieldRim);
+  shieldGroup.visible = showWeapons;
+  leftArmObj.armPivot.add(shieldGroup);
+
+  // =========================================================
+  // 7. PIERNAS Y TENIS/BOTAS CON DOBLE COLLAR BLANCO, PUNTERA ILUMINADA Y AGUJETAS
+  // =========================================================
+  const sharedBootGeo = createSolidSneakerGeometry();
+  const sharedSoleGeo = createSolidSoleGeometry();
+
+  function createDetailedLeg(side) {
+    const legPivot = new THREE.Group();
+    legPivot.position.set(side * 0.182, 1.25, side === 1 ? -0.055 : 0.030);
+
+    const legCylGeo = new THREE.CylinderGeometry(0.156, 0.154, 0.78, 36);
+    const legCyl = new THREE.Mesh(legCylGeo, limbGreenMat);
+    legCyl.position.y = -0.36;
+    legCyl.castShadow = true;
+    legCyl.receiveShadow = true;
+    legPivot.add(legCyl);
+
+    const bootGroup = new THREE.Group();
+    bootGroup.position.set(0, -0.78, 0.0);
+    bootGroup.rotation.y = side === -1 ? 0.04 : -0.15;
+
+    const bootMesh = new THREE.Mesh(sharedBootGeo, bootGreenMat);
+    bootMesh.castShadow = true;
+    bootMesh.receiveShadow = true;
+    bootGroup.add(bootMesh);
+
+    const collarPointsTop = [];
+    const collarPointsBot = [];
+    const collarSteps = 36;
+    for (let i = 0; i <= collarSteps; i++) {
+      const a = (i / collarSteps) * Math.PI * 2;
+      const cx = Math.cos(a) * 0.160;
+      const cz = Math.sin(a) * 0.160;
+      const dip = cz > 0 ? Math.pow(cz / 0.160, 2) * 0.014 : 0;
+      collarPointsTop.push(new THREE.Vector3(cx, 0.048 - dip, cz));
+      collarPointsBot.push(new THREE.Vector3(cx * 1.01, 0.032 - dip, cz * 1.01));
+    }
+    const collarRimTop = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(collarPointsTop, true), 40, 0.0085, 10, true),
+      whiteTrimMat
+    );
+    const collarRimBot = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(collarPointsBot, true), 40, 0.0075, 10, true),
+      whiteTrimMat
+    );
+    bootGroup.add(collarRimTop, collarRimBot);
+
+    const soleMesh = new THREE.Mesh(sharedSoleGeo, soleGreenMat);
+    soleMesh.castShadow = true;
+    soleMesh.receiveShadow = true;
+    bootGroup.add(soleMesh);
+
+    const laceGroup = new THREE.Group();
+    for (let l = 0; l < 3; l++) {
+      const yLace = 0.002 - l * 0.036;
+      const zLace = 0.190 + l * 0.025;
+      const bar = new THREE.Mesh(new THREE.CapsuleGeometry(0.0075, 0.088, 6, 10), whiteTrimMat);
+      bar.rotation.z = Math.PI / 2;
+      bar.position.set(0, yLace, zLace);
+      laceGroup.add(bar);
+
+      if (l < 2) {
+        const diag = new THREE.Mesh(new THREE.CapsuleGeometry(0.0068, 0.084, 6, 10), whiteTrimMat);
+        diag.rotation.z = Math.PI / 2 + (l % 2 === 0 ? -0.25 : 0.25);
+        diag.rotation.x = 0.58;
+        diag.position.set(0, yLace - 0.018, zLace + 0.014);
+        laceGroup.add(diag);
+      }
+    }
+    bootGroup.add(laceGroup);
+
+    legPivot.add(bootGroup);
+    return legPivot;
+  }
+
+  const leftLeg = createDetailedLeg(-1);
+  const rightLeg = createDetailedLeg(1);
+  bodyPivot.add(leftLeg, rightLeg);
+
+  // Efecto Slash de espada para el juego
+  const slashGeo = new THREE.RingGeometry(0.9, 1.75, 24, 1, -Math.PI * 0.65, Math.PI * 1.3);
+  const slashMat = new THREE.MeshBasicMaterial({
+    color: 0xfef08a,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0
+  });
+  const slashMesh = new THREE.Mesh(slashGeo, slashMat);
+  slashMesh.rotation.x = Math.PI / 2;
+  slashMesh.position.set(0, 1.2, 0.35);
+  root.add(slashMesh);
+
+  return {
+    root,
+    bodyPivot,
+    headMesh,
+    stemPivot,
+    leftArm: leftArmObj.armPivot,
+    rightArm: rightArmObj.armPivot,
+    leftLeg,
+    rightLeg,
+    swordGroup,
+    shieldGroup,
+    slashMesh,
+    slashMat,
+    mouthTeethGroup,
+    smileGroup
+  };
+}
+
+
+    const container = document.getElementById('three-container');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setSize(600, 900);
+    renderer.setPixelRatio(2);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.06;
+    container.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+
+    // Fondo morado de estudio igual a la referencia
+    const bgCanvas = document.createElement('canvas');
+    bgCanvas.width = 512;
+    bgCanvas.height = 1024;
+    const ctx = bgCanvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 512, 1024);
+    grad.addColorStop(0, '#4f127b');
+    grad.addColorStop(0.55, '#59168a');
+    grad.addColorStop(1, '#3d0d65');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 1024);
+    const bgTex = new THREE.CanvasTexture(bgCanvas);
+    bgTex.colorSpace = THREE.SRGBColorSpace;
+    scene.background = bgTex;
+
+    const camera = new THREE.PerspectiveCamera(26, 600 / 900, 0.1, 100);
+    camera.position.set(-0.22, 2.28, 9.25);
+    camera.lookAt(-0.22, 2.20, 0);
+
+    // Sombras de contacto suaves elipticas exactamente bajo las dos suelas (como en ref_smile.png)
+    const contactCanvas = document.createElement('canvas');
+    contactCanvas.width = 256;
+    contactCanvas.height = 256;
+    const cctx = contactCanvas.getContext('2d');
+    const cgrad = cctx.createRadialGradient(128, 128, 10, 128, 128, 118);
+    cgrad.addColorStop(0, 'rgba(20, 4, 38, 0.72)');
+    cgrad.addColorStop(0.55, 'rgba(20, 4, 38, 0.32)');
+    cgrad.addColorStop(1, 'rgba(20, 4, 38, 0.0)');
+    cctx.fillStyle = cgrad;
+    cctx.fillRect(0, 0, 256, 256);
+    const contactTex = new THREE.CanvasTexture(contactCanvas);
+    const shadowMat = new THREE.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false });
+
+    const leftContact = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.78), shadowMat);
+    leftContact.rotation.x = -Math.PI / 2;
+    leftContact.position.set(-0.15, 0.19, 0.10);
+    scene.add(leftContact);
+
+    const rightContact = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.78), shadowMat);
+    rightContact.rotation.x = -Math.PI / 2;
+    rightContact.position.set(0.22, 0.19, 0.02);
+    scene.add(rightContact);
+
+    // Iluminacion de estudio 3 puntos identica a la referencia
+    const hemi = new THREE.HemisphereLight(0xfff5eb, 0xb45309, 1.05);
+    scene.add(hemi);
+
+    // Luz principal frontal-izquierda superior
+    const keyLight = new THREE.DirectionalLight(0xfff7ed, 1.95);
+    keyLight.position.set(-3.2, 6.5, 6.2);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.bias = -0.0005;
+    scene.add(keyLight);
+
+    // Rim light izquierda fuerte (brillo blanco-calido vertical en el borde izquierdo de la maceta y tallo)
+    const leftRim = new THREE.SpotLight(0xfff7ed, 8.5, 18, Math.PI / 3.2, 0.45, 1.0);
+    leftRim.position.set(-4.6, 2.8, 1.2);
+    leftRim.target.position.set(-0.72, 1.9, 0.15);
+    scene.add(leftRim);
+    scene.add(leftRim.target);
+
+    // Fill light derecha calida
+    const rightFill = new THREE.DirectionalLight(0xfed7aa, 0.85);
+    rightFill.position.set(4.5, 2.0, 4.5);
+    scene.add(rightFill);
+
+    // Bounce inferior calido naranja
+    const bottomBounce = new THREE.DirectionalLight(0xea580c, 0.65);
+    bottomBounce.position.set(0, -4, 3);
+    scene.add(bottomBounce);
+
+    const char = createExactPlantCharacter({ showWeapons: false, showTeeth: false });
+    // En la imagen de referencia el personaje esta girado ~19 grados hacia nuestra derecha
+    char.root.rotation.y = 0.34;
+    scene.add(char.root);
+
+    renderer.render(scene, camera);
+    window.__RENDER_READY = true;
+  </script>
+</body>
+</html>
